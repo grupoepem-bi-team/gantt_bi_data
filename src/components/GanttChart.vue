@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import type { GanttConfig, GanttRow, GanttItem } from '@/types/gantt'
-import { startOfDay, endOfDay } from '@/utils/date'
-import GanttList from './GanttList.vue'
-import GanttTimeline from './GanttTimeline.vue'
-import ItemModal from './ItemModal.vue'
-import { useExcelExport } from '@/composables/useExcelExport'
+import type { GanttConfig, GanttRow, GanttItem, Usuario } from '@/types/gantt'
 
 interface Props {
   config: GanttConfig
+  currentUser?: Usuario
 }
 
 const props = defineProps<Props>()
@@ -212,6 +208,7 @@ onMounted(() => {
         :timeline-end="timelineEnd"
         :timeline-width="timelineWidth"
         :scroll-left="scrollLeft"
+        :current-user="currentUser"
         :on-scroll="handleScroll"
         :on-item-move="handleItemMove"
         :on-item-resize="handleItemResize"
@@ -228,6 +225,7 @@ onMounted(() => {
         :timeline-end="timelineEnd"
         :timeline-width="timelineWidth"
         :scroll-left="scrollLeft"
+        :current-user="currentUser"
         :on-scroll="handleScroll"
         :on-item-move="handleItemMove"
         :on-item-resize="handleItemResize"

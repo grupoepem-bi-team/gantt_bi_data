@@ -9,6 +9,11 @@ dist/
 *.log
 npm-debug.log*
 
+# Environment - SENSITIVE DATA
+.env
+.env.local
+.env.*.local
+
 # Editor
 .vscode/
 .idea/
@@ -17,14 +22,3 @@ npm-debug.log*
 *.njsproj
 *.sln
 *.sw?
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment
-.env
-.env.local
-
-# Playwright
-playwright-mcp/

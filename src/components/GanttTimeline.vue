@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import type { GanttItem, GanttRow } from '@/types/gantt'
-import { date } from '@/utils/date'
+import type { GanttItem, GanttRow, Usuario } from '@/types/gantt'
 
 interface Props {
   items: GanttItem[]
@@ -12,6 +11,7 @@ interface Props {
   timelineEnd: number
   timelineWidth: number
   scrollLeft: number
+  currentUser?: Usuario
   onScroll: (scrollLeft: number) => void
   onItemMove: (itemId: string, newRowId: string, newStart: number, newEnd: number) => void
   onItemResize: (itemId: string, newStart: number, newEnd: number) => void
