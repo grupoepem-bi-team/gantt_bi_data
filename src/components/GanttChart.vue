@@ -167,13 +167,13 @@ onMounted(() => {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/>
         </svg>
-        Tasks
-        <button class="add-btn" @click="openCreateModal" title="Add Task">
+        Tareas
+        <button class="add-btn" @click="openCreateModal" title="Agregar Tarea">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
-        <button class="export-btn" @click="handleExportExcel" title="Export to Excel">
+        <button class="export-btn" @click="handleExportExcel" title="Exportar a Excel">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
@@ -468,5 +468,141 @@ onMounted(() => {
   background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
   border-radius: 2px;
   opacity: 0.7;
+}
+
+/* Responsive Styles */
+@media (max-width: 1024px) {
+  .gantt-container {
+    height: 450px;
+    border-radius: 8px;
+  }
+
+  .gantt-list-header {
+    width: 150px;
+    min-width: 150px;
+    padding: 10px 12px;
+  }
+
+  .gantt-date-cell {
+    min-width: 150px;
+  }
+
+  .export-btn span {
+    display: none;
+  }
+
+  .export-btn {
+    padding: 6px 8px;
+  }
+
+  .gantt-minimap {
+    width: 160px;
+    height: 60px;
+    bottom: 55px;
+    right: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .gantt-container {
+    height: 400px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .gantt-header {
+    flex-direction: column;
+  }
+
+  .gantt-list-header {
+    width: 100%;
+    min-width: 100%;
+    padding: 8px 12px;
+    border-right: none;
+    border-bottom: 1px solid #2a2a4a;
+  }
+
+  .gantt-timeline-header {
+    height: 50px;
+  }
+
+  .gantt-body {
+    flex-direction: column;
+  }
+
+  .gantt-list {
+    width: 100%;
+    min-width: 100%;
+    height: 100px;
+    border-right: none;
+    border-bottom: 1px solid #2a2a4a;
+  }
+
+  .gantt-timeline {
+    flex: 1;
+  }
+
+  .gantt-minimap {
+    display: none;
+  }
+
+  .gantt-controls {
+    padding: 8px;
+    gap: 12px;
+  }
+
+  .zoom-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .gantt-container {
+    height: 350px;
+  }
+
+  .gantt-list-header {
+    padding: 6px 10px;
+  }
+
+  .gantt-list-header h2, .gantt-list-header span:not(.add-btn):not(.export-btn) {
+    display: none;
+  }
+
+  .add-btn, .export-btn {
+    width: 24px;
+    height: 24px;
+    padding: 4px;
+  }
+
+  .add-btn svg, .export-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .gantt-date-cell {
+    min-width: 100px;
+    padding: 4px 8px;
+  }
+
+  .gantt-date-main {
+    font-size: 11px;
+  }
+
+  .gantt-date-sub {
+    display: none;
+  }
+
+  .gantt-controls {
+    padding: 6px;
+    gap: 8px;
+  }
+
+  .zoom-label {
+    font-size: 11px;
+    min-width: 60px;
+  }
 }
 </style>

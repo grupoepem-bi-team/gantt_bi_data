@@ -119,7 +119,7 @@ function handleLoginSuccess() {
       <header class="header">
         <img src="./assets/Logo_Grupo_Epem.png" alt="Grupo Epem" class="logo" />
         <div class="title-group">
-          <h1>Vue Gantt Chart</h1>
+          <h1>BI Gantt EPEM</h1>
           <p class="subtitle">Arrastra para mover, redimensiona desde los bordes, doble clic para editar, + para agregar</p>
         </div>
         <div class="header-actions">
@@ -181,5 +181,75 @@ body {
 
 .header-actions {
   margin-left: auto;
+}
+
+/* Responsive Styles */
+@media (max-width: 1024px) {
+  .app {
+    padding: 24px;
+  }
+
+  .logo {
+    height: 40px;
+  }
+
+  .title-group h1 {
+    font-size: 24px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .app {
+    padding: 16px;
+  }
+
+  .header {
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .logo {
+    height: 36px;
+  }
+
+  .title-group {
+    flex: 1;
+    min-width: 150px;
+  }
+
+  .title-group h1 {
+    font-size: 20px;
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  .header-actions {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding: 12px;
+  }
+
+  .header {
+    margin-bottom: 12px;
+  }
+
+  .logo {
+    height: 32px;
+  }
+
+  .title-group h1 {
+    font-size: 18px;
+  }
 }
 </style>

@@ -50,7 +50,7 @@ function selectQuickUser(userEmail: string) {
     <div class="login-card">
       <div class="login-header">
         <img src="./assets/Logo_Grupo_Epem.png" alt="Grupo Epem" class="logo" />
-        <h1>Vue Gantt Chart</h1>
+        <h1>BI Gantt EPEM</h1>
         <p>Inicia sesión para continuar</p>
       </div>
 
