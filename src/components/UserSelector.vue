@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
-import type { Usuario } from '@/types/gantt'
 
 const authStore = useAuthStore()
 const showDropdown = ref(false)
@@ -10,8 +9,8 @@ function toggleDropdown() {
   showDropdown.value = !showDropdown.value
 }
 
-function selectUser(user: Usuario) {
-  authStore.switchUser(user.id)
+function selectUser(userId: string) {
+  authStore.switchUser(userId)
   showDropdown.value = false
 }
 
@@ -27,7 +26,7 @@ function closeDropdown() {
 <template>
   <div class="user-selector" v-if="authStore.user">
     <button class="user-button" @click="toggleDropdown">
-      <span class="user-avatar">{{ authStore.user.avatar }}</span>
+      <span class="user-avatar" :style="{ background: authStore.user.color }">{{ authStore.user.avatar }}</span>
       <span class="user-name">{{ authStore.user.nombre }}</span>
       <svg class="dropdown-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="6 9 12 15 18 9"/>
@@ -38,10 +37,11 @@ function closeDropdown() {
       <div v-if="showDropdown" class="dropdown-overlay" @click="closeDropdown"></div>
       <div v-if="showDropdown" class="user-dropdown">
         <div class="dropdown-header">
-          <span class="user-avatar-lg">{{ authStore.user.avatar }}</span>
+          <span class="user-avatar-lg" :style="{ background: authStore.user.color }">{{ authStore.user.avatar }}</span>
           <div class="user-info">
             <span class="user-nombre">{{ authStore.user.nombre }}</span>
             <span class="user-email">{{ authStore.user.email }}</span>
+            <span class="user-rol" :style="{ color: authStore.user.color }">{{ authStore.user.rol }}</span>
           </div>
         </div>
 
@@ -54,9 +54,9 @@ function closeDropdown() {
             :key="user.id"
             class="dropdown-item"
             :class="{ active: user.id === authStore.user?.id }"
-            @click="selectUser(user)"
+            @click="selectUser(user.id)"
           >
-            <span class="item-avatar">{{ user.avatar }}</span>
+            <span class="item-avatar" :style="{ background: user.color }">{{ user.avatar }}</span>
             <span class="item-name">{{ user.nombre }}</span>
             <svg v-if="user.id === authStore.user?.id" class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="20 6 9 17 4 12"/>
@@ -89,52 +89,51 @@ function closeDropdown() {
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-secondary);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .user-button:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--bg-hover);
+  border-color: var(--border-primary);
 }
 
 .user-avatar {
   width: 28px;
   height: 28px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .user-name {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
 }
 
 .dropdown-icon {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-tertiary);
 }
 
 .user-dropdown {
   position: fixed;
   top: 70px;
   right: 20px;
-  width: 280px;
-  background: linear-gradient(180deg, #1e1e2e 0%, #2a2a3e 100%);
-  border: 1px solid #3a3a5a;
+  width: 300px;
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card-end) 100%);
+  border: 1px solid var(--border-secondary);
   border-radius: 12px;
   padding: 8px;
   z-index: 1001;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
 }
 
 .dropdown-overlay {
@@ -154,38 +153,44 @@ function closeDropdown() {
 }
 
 .user-avatar-lg {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.user-info {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .user-nombre {
-  color: #fff;
-  font-size: 14px;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .user-email {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-rol {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
 }
 
 .dropdown-divider {
   height: 1px;
-  background: #3a3a5a;
+  background: var(--border-secondary);
   margin: 8px 0;
 }
 
@@ -195,7 +200,7 @@ function closeDropdown() {
 
 .section-label {
   display: block;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-dimmed);
   font-size: 11px;
   font-weight: 500;
   text-transform: uppercase;
@@ -214,21 +219,16 @@ function closeDropdown() {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.dropdown-item.logout:hover span {
+  color: #f87171;
 }
 
 .dropdown-item:hover {
   background: rgba(99, 102, 241, 0.2);
-  color: #fff;
-}
-
-.dropdown-item.active {
-  background: rgba(99, 102, 241, 0.3);
-}
-
-.dropdown-item.logout {
-  color: #f87171;
+  color: var(--text-primary);
 }
 
 .dropdown-item.logout:hover {
@@ -236,29 +236,25 @@ function closeDropdown() {
 }
 
 .item-avatar {
-  width: 28px;
-  height: 28px;
-  background: #3a3a5a;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.dropdown-item.active .item-avatar {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-}
-
-.item-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
   flex: 1;
   text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .check-icon {
   color: #22c55e;
+  flex-shrink: 0;
 }
 
 .logout svg {

@@ -1,0 +1,86 @@
+:root,
+[data-theme="dark"] {
+  --bg-primary: #1a1d23;
+  --bg-secondary: #22262e;
+  --bg-tertiary: #181b21;
+  --bg-card: #242830;
+  --bg-card-end: #2a2f38;
+  --bg-hover: #2d323c;
+  --bg-input: #1a1d23;
+  --bg-timeline: #141619;
+  --bg-list: #1e2128;
+  --bg-weekend: rgba(59, 130, 246, 0.04);
+  --bg-today: rgba(59, 130, 246, 0.12);
+  --bg-item-start: #2563eb;
+  --bg-item-end: #1d4ed8;
+  --bg-item-start-hover: #3b82f6;
+  --bg-item-end-hover: #2563eb;
+  --bg-admin: #dc2626;
+  --bg-admin-end: #b91c1c;
+
+  --border-primary: #333842;
+  --border-secondary: #404854;
+  --border-input: #404854;
+  --border-focus: #3b82f6;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+  --text-muted: #64748b;
+  --text-dimmed: #475569;
+  --text-accent: #3b82f6;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-item: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  --scrollbar-thumb: #404854;
+  --scrollbar-track: #1e2128;
+
+  --gantt-bg: #141619;
+  --gantt-header-bg: linear-gradient(180deg, #22262e 0%, #1e2128 100%);
+}
+
+[data-theme="light"] {
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f3f5;
+  --bg-card: #ffffff;
+  --bg-card-end: #f8f9fa;
+  --bg-hover: #e9ecef;
+  --bg-input: #ffffff;
+  --bg-timeline: #f8f9fa;
+  --bg-list: #ffffff;
+  --bg-weekend: rgba(59, 130, 246, 0.05);
+  --bg-today: rgba(59, 130, 246, 0.1);
+  --bg-item-start: #2563eb;
+  --bg-item-end: #1d4ed8;
+  --bg-item-start-hover: #3b82f6;
+  --bg-item-end-hover: #2563eb;
+  --bg-admin: #dc2626;
+  --bg-admin-end: #b91c1c;
+
+  --border-primary: #dee2e6;
+  --border-secondary: #ced4da;
+  --border-input: #ced4da;
+  --border-focus: #3b82f6;
+
+  --text-primary: #212529;
+  --text-secondary: #495057;
+  --text-tertiary: #6c757d;
+  --text-muted: #adb5bd;
+  --text-dimmed: #adb5bd;
+  --text-accent: #2563eb;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-item: 0 1px 3px rgba(0, 0, 0, 0.15);
+
+  --scrollbar-thumb: #ced4da;
+  --scrollbar-track: #f1f3f5;
+
+  --gantt-bg: #f8f9fa;
+  --gantt-header-bg: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+}

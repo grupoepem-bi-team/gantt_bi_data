@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { GanttItem, GanttRow, Usuario } from '@/types/gantt'
+import { date } from '@/utils/date'
+import { useAuthStore } from '@/stores/authStore'
 
 interface Props {
   items: GanttItem[]
@@ -12,6 +14,8 @@ interface Props {
   timelineWidth: number
   scrollLeft: number
   currentUser?: Usuario
+  isAdmin?: boolean
+  canModify?: (item: GanttItem) => boolean
   onScroll: (scrollLeft: number) => void
   onItemMove: (itemId: string, newRowId: string, newStart: number, newEnd: number) => void
   onItemResize: (itemId: string, newStart: number, newEnd: number) => void
@@ -20,16 +24,207 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  isAdmin: false,
   onItemEdit: undefined,
-  onItemDelete: undefined
+  onItemDelete: undefined,
+  canModify: () => true
 })
+
+const authStore = useAuthStore()
+
+function getUserById(id: string) {
+  const users = authStore.usuariosDisponibles || []
+  if (!users.length) return undefined
+  return users.find(u => u.id === id)
+}
+
+function getAssignedUserNames(item: GanttItem): string {
+  const ids = item.assignedUserIds || (item.assignedUserId ? [item.assignedUserId] : [])
+  if (ids.length === 0) return 'Sin asignar'
+  return ids.map(id => getUserById(id)?.nombre || id).join(', ')
+}
+
+function getAssignedUsers(item: GanttItem) {
+  const ids = item.assignedUserIds || (item.assignedUserId ? [item.assignedUserId] : [])
+  return ids.map(id => getUserById(id)).filter(Boolean) as Usuario[]
+}
 
 const timelineRef = ref<HTMLElement | null>(null)
 const ROW_HEIGHT = 44
 
-const rowsArray = computed(() => [...props.rowMap.values()])
+function getItemPosition(item: GanttItem) {
+  const totalDuration = props.timelineEnd - props.timelineStart
+  const itemStartOffset = item.time.start - props.timelineStart
+  const itemEndOffset = item.time.end - props.timelineStart
 
-// Generate timeline segments (days/weeks/months depending on zoom)
+  const left = (itemStartOffset / totalDuration) * props.timelineWidth
+  const width = Math.max(((itemEndOffset - itemStartOffset) / totalDuration) * props.timelineWidth, 20)
+
+  return { left, width }
+}
+
+function handleScroll(e: Event) {
+  const target = e.target as HTMLElement
+  props.onScroll(target.scrollLeft)
+}
+
+const tooltip = ref<{ visible: boolean; item: GanttItem | null; x: number; y: number }>({
+  visible: false,
+  item: null,
+  x: 0,
+  y: 0
+})
+
+function showTooltip(e: MouseEvent, item: GanttItem) {
+  const rect = (e.target as HTMLElement).getBoundingClientRect()
+  tooltip.value = {
+    visible: true,
+    item,
+    x: rect.left + rect.width / 2,
+    y: rect.top - 10
+  }
+}
+
+function hideTooltip() {
+  tooltip.value.visible = false
+  tooltip.value.item = null
+}
+
+function formatDate(timestamp: number): string {
+  return date(timestamp).format('DD MMM YYYY HH:mm')
+}
+
+// Drag state - only horizontal movement within the same row
+const dragging = ref<GanttItem | null>(null)
+const dragStartX = ref(0)
+const dragStartTimeStart = ref(0)
+const dragStartTimeEnd = ref(0)
+const dragDeltaX = ref(0)
+
+function startDrag(e: MouseEvent, item: GanttItem) {
+  if (!props.canModify(item)) return
+  e.preventDefault()
+  e.stopPropagation()
+
+  dragging.value = item
+  dragStartX.value = e.clientX
+  dragStartTimeStart.value = item.time.start
+  dragStartTimeEnd.value = item.time.end
+  dragDeltaX.value = 0
+
+  document.addEventListener('mousemove', onDragMove)
+  document.addEventListener('mouseup', stopDrag)
+}
+
+function onDragMove(e: MouseEvent) {
+  if (!dragging.value) return
+
+  const deltaX = e.clientX - dragStartX.value
+  dragDeltaX.value = deltaX
+
+  const element = document.querySelector(`[data-item-id="${dragging.value.id}"]`) as HTMLElement
+  if (element) {
+    const origLeft = getItemPosition(dragging.value).left
+    element.style.left = (origLeft + deltaX) + 'px'
+    element.style.zIndex = '50'
+    element.style.opacity = '0.85'
+  }
+}
+
+function stopDrag(e: MouseEvent) {
+  if (!dragging.value) return
+
+  const deltaX = e.clientX - dragStartX.value
+  const newTimeStart = dragStartTimeStart.value + (deltaX / props.timelineWidth) * (props.timelineEnd - props.timelineStart)
+  const duration = dragEndTimeDrag.value - dragStartTimeStart.value
+  const newTimeEnd = newTimeStart + duration
+
+  const element = document.querySelector(`[data-item-id="${dragging.value.id}"]`) as HTMLElement
+  if (element) {
+    element.style.zIndex = ''
+    element.style.opacity = ''
+  }
+
+  if (Math.abs(deltaX) > 5) {
+    props.onItemMove(dragging.value.id, dragging.value.rowId, newTimeStart, newTimeEnd)
+  }
+
+  dragging.value = null
+  dragDeltaX.value = 0
+  document.removeEventListener('mousemove', onDragMove)
+  document.removeEventListener('mouseup', stopDrag)
+}
+
+const dragEndTimeDrag = computed(() => {
+  return dragStartTimeEnd.value
+})
+
+// Resize state
+const resizing = ref<{ item: GanttItem; edge: 'left' | 'right' } | null>(null)
+const resizeStartX = ref(0)
+const resizeStartWidth = ref(0)
+const resizeStartTimeStart = ref(0)
+const resizeStartTimeEnd = ref(0)
+
+function startResize(e: MouseEvent, item: GanttItem, edge: 'left' | 'right') {
+  if (!props.canModify(item)) return
+  e.preventDefault()
+  e.stopPropagation()
+
+  resizing.value = { item, edge }
+  resizeStartX.value = e.clientX
+  resizeStartWidth.value = getItemPosition(item).width
+  resizeStartTimeStart.value = item.time.start
+  resizeStartTimeEnd.value = item.time.end
+
+  document.addEventListener('mousemove', onResizeMove)
+  document.addEventListener('mouseup', stopResize)
+}
+
+function onResizeMove(e: MouseEvent) {
+  if (!resizing.value) return
+
+  const deltaX = e.clientX - resizeStartX.value
+  const item = resizing.value.item
+
+  const element = document.querySelector(`[data-item-id="${item.id}"]`) as HTMLElement
+  if (!element) return
+
+  if (resizing.value.edge === 'right') {
+    const newWidth = Math.max(20, resizeStartWidth.value + deltaX)
+    element.style.width = newWidth + 'px'
+  } else {
+    const origLeft = getItemPosition(item).left
+    const newLeft = origLeft + deltaX
+    if (newLeft >= 0) {
+      element.style.left = newLeft + 'px'
+      element.style.width = Math.max(20, resizeStartWidth.value - deltaX) + 'px'
+    }
+  }
+}
+
+function stopResize(e: MouseEvent) {
+  if (!resizing.value) return
+
+  const deltaX = e.clientX - resizeStartX.value
+  const item = resizing.value.item
+
+  if (resizing.value.edge === 'right') {
+    const newTimeEnd = resizeStartTimeEnd.value + (deltaX / props.timelineWidth) * (props.timelineEnd - props.timelineStart)
+    props.onItemResize(item.id, item.time.start, newTimeEnd)
+  } else {
+    const newTimeStart = resizeStartTimeStart.value + (deltaX / props.timelineWidth) * (props.timelineEnd - props.timelineStart)
+    if (newTimeStart < item.time.end) {
+      props.onItemResize(item.id, newTimeStart, item.time.end)
+    }
+  }
+
+  resizing.value = null
+  document.removeEventListener('mousemove', onResizeMove)
+  document.removeEventListener('mouseup', stopResize)
+}
+
+// Timeline segments
 const timelineSegments = computed(() => {
   const segments: Array<{ start: number; end: number; label: string; isWeekend: boolean; isToday: boolean }> = []
   const MS_PER_DAY = 86400000
@@ -63,214 +258,7 @@ const timelineSegments = computed(() => {
   return segments
 })
 
-function getItemPosition(item: GanttItem) {
-  const totalDuration = props.timelineEnd - props.timelineStart
-  const itemStartOffset = item.time.start - props.timelineStart
-  const itemEndOffset = item.time.end - props.timelineStart
-
-  const left = (itemStartOffset / totalDuration) * props.timelineWidth
-  const width = Math.max(((itemEndOffset - itemStartOffset) / totalDuration) * props.timelineWidth, 20)
-
-  return { left, width }
-}
-
-function getRowTop(rowId: string): number {
-  const index = rowsArray.value.findIndex(r => r.id === rowId)
-  return index * ROW_HEIGHT
-}
-
-function handleScroll(e: Event) {
-  const target = e.target as HTMLElement
-  props.onScroll(target.scrollLeft)
-}
-
-// Tooltip state
-const tooltip = ref<{ visible: boolean; item: GanttItem | null; x: number; y: number }>({
-  visible: false,
-  item: null,
-  x: 0,
-  y: 0
-})
-
-function showTooltip(e: MouseEvent, item: GanttItem) {
-  const rect = (e.target as HTMLElement).getBoundingClientRect()
-  tooltip.value = {
-    visible: true,
-    item,
-    x: rect.left + rect.width / 2,
-    y: rect.top - 10
-  }
-}
-
-function hideTooltip() {
-  tooltip.value.visible = false
-  tooltip.value.item = null
-}
-
-function formatDate(timestamp: number): string {
-  return date(timestamp).format('DD MMM YYYY HH:mm')
-}
-
-// Drag state
-const dragging = ref<GanttItem | null>(null)
-const dragStartX = ref(0)
-const dragStartY = ref(0)
-const dragStartLeft = ref(0)
-const dragStartTop = ref(0)
-const dragStartRowId = ref('')
-const dragStartTimeStart = ref(0)
-const dragStartTimeEnd = ref(0)
-const currentDropRowId = ref<string | null>(null)
-
-function startDrag(e: MouseEvent, item: GanttItem) {
-  e.preventDefault()
-  e.stopPropagation()
-
-  dragging.value = item
-  dragStartX.value = e.clientX
-  dragStartY.value = e.clientY
-  dragStartLeft.value = getItemPosition(item).left
-  dragStartTop.value = getRowTop(item.rowId)
-  dragStartRowId.value = item.rowId
-  dragStartTimeStart.value = item.time.start
-  dragStartTimeEnd.value = item.time.end
-
-  document.addEventListener('mousemove', onDragMove)
-  document.addEventListener('mouseup', stopDrag)
-}
-
-function onDragMove(e: MouseEvent) {
-  if (!dragging.value) return
-
-  const deltaX = e.clientX - dragStartX.value
-  const deltaY = e.clientY - dragStartY.value
-  const newLeft = dragStartLeft.value + deltaX
-  const newTop = dragStartTop.value + deltaY
-
-  const newTimeStart = dragStartTimeStart.value + (deltaX / props.timelineWidth) * (props.timelineEnd - props.timelineStart)
-  const duration = dragStartTimeEnd.value - dragStartTimeStart.value
-  const newTimeEnd = newTimeStart + duration
-
-  const element = document.querySelector(`[data-item-id="${dragging.value.id}"]`) as HTMLElement
-  if (element) {
-    element.style.left = newLeft + 'px'
-    element.style.top = newTop + 'px'
-  }
-
-  const newRowId = getRowIdFromY(e.clientY)
-  if (newRowId !== currentDropRowId.value) {
-    currentDropRowId.value = newRowId
-  }
-}
-
-function getRowIdFromY(clientY: number): string | null {
-  if (!timelineRef.value) return null
-  const rect = timelineRef.value.getBoundingClientRect()
-  const relativeY = clientY - rect.top + timelineRef.value.scrollTop
-  const rowIndex = Math.floor(relativeY / ROW_HEIGHT)
-  if (rowIndex >= 0 && rowIndex < props.rows.length) {
-    return props.rows[rowIndex].id
-  }
-  return null
-}
-
-function stopDrag(e: MouseEvent) {
-  if (!dragging.value) return
-
-  const deltaX = e.clientX - dragStartX.value
-  const deltaY = e.clientY - dragStartY.value
-  const newTimeStart = dragStartTimeStart.value + (deltaX / props.timelineWidth) * (props.timelineEnd - props.timelineStart)
-  const duration = dragStartTimeEnd.value - dragStartTimeStart.value
-  const newTimeEnd = newTimeStart + duration
-
-  const newRowId = currentDropRowId.value || dragging.value.rowId
-
-  if (newRowId !== dragStartRowId.value) {
-    props.onItemMove(dragging.value.id, newRowId, newTimeStart, newTimeEnd)
-  } else {
-    props.onItemMove(dragging.value.id, dragging.value.rowId, newTimeStart, newTimeEnd)
-  }
-
-  dragging.value = null
-  currentDropRowId.value = null
-  document.removeEventListener('mousemove', onDragMove)
-  document.removeEventListener('mouseup', stopDrag)
-}
-
-// Resize state
-const resizing = ref<{ item: GanttItem; edge: 'left' | 'right' } | null>(null)
-const resizeStartX = ref(0)
-const resizeStartWidth = ref(0)
-const resizeStartLeft = ref(0)
-const resizeStartTimeStart = ref(0)
-const resizeStartTimeEnd = ref(0)
-
-function startResize(e: MouseEvent, item: GanttItem, edge: 'left' | 'right') {
-  e.preventDefault()
-  e.stopPropagation()
-
-  resizing.value = { item, edge }
-  resizeStartX.value = e.clientX
-  resizeStartWidth.value = getItemPosition(item).width
-  resizeStartLeft.value = getItemPosition(item).left
-  resizeStartTimeStart.value = item.time.start
-  resizeStartTimeEnd.value = item.time.end
-
-  document.addEventListener('mousemove', onResizeMove)
-  document.addEventListener('mouseup', stopResize)
-}
-
-function onResizeMove(e: MouseEvent) {
-  if (!resizing.value) return
-
-  const deltaX = e.clientX - resizeStartX.value
-  const item = resizing.value.item
-
-  if (resizing.value.edge === 'right') {
-    const newWidth = Math.max(20, resizeStartWidth.value + deltaX)
-    const newTimeEnd = resizeStartTimeEnd.value + (deltaX / props.timelineWidth) * (props.timelineEnd - props.timelineStart)
-
-    const element = document.querySelector(`[data-item-id="${item.id}"]`) as HTMLElement
-    if (element) {
-      element.style.width = newWidth + 'px'
-    }
-  } else {
-    const newLeft = resizeStartLeft.value + deltaX
-    const newTimeStart = resizeStartTimeStart.value + (deltaX / props.timelineWidth) * (props.timelineEnd - props.timelineStart)
-
-    if (newLeft >= 0) {
-      const element = document.querySelector(`[data-item-id="${item.id}"]`) as HTMLElement
-      if (element) {
-        element.style.left = newLeft + 'px'
-        element.style.width = (resizeStartWidth.value - deltaX) + 'px'
-      }
-    }
-  }
-}
-
-function stopResize(e: MouseEvent) {
-  if (!resizing.value) return
-
-  const deltaX = e.clientX - resizeStartX.value
-  const item = resizing.value.item
-
-  if (resizing.value.edge === 'right') {
-    const newTimeEnd = resizeStartTimeEnd.value + (deltaX / props.timelineWidth) * (props.timelineEnd - props.timelineStart)
-    props.onItemResize(item.id, item.time.start, newTimeEnd)
-  } else {
-    const newLeft = resizeStartLeft.value + deltaX
-    if (newLeft >= 0) {
-      const newTimeStart = resizeStartTimeStart.value + (deltaX / props.timelineWidth) * (props.timelineEnd - props.timelineStart)
-      props.onItemResize(item.id, newTimeStart, item.time.end)
-    }
-  }
-
-  resizing.value = null
-  document.removeEventListener('mousemove', onResizeMove)
-  document.removeEventListener('mouseup', stopResize)
-}
-
-// Today marker position
+// Today marker
 const todayMarkerX = computed(() => {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -370,70 +358,71 @@ onUnmounted(() => {
         <div class="gantt-today-label">Today</div>
       </div>
 
-      <!-- Row backgrounds -->
+      <!-- Rows with their items -->
       <div
         v-for="(row, rowIndex) in rows"
         :key="row.id"
-        class="gantt-row-bg"
-        :class="{ 'is-even': rowIndex % 2 === 0 }"
-        :style="{ top: getRowTop(row.id) + 'px', height: ROW_HEIGHT + 'px' }"
-      ></div>
-
-      <!-- Items -->
-      <div
-        v-for="row in rows"
-        :key="row.id"
         class="gantt-row"
-        :style="{ top: getRowTop(row.id) + 'px', height: ROW_HEIGHT + 'px' }"
+        :class="{ 'is-even': rowIndex % 2 === 0 }"
+        :style="{ top: rowIndex * ROW_HEIGHT + 'px', height: ROW_HEIGHT + 'px' }"
       >
-        <div
-          v-for="item in itemsByRow.get(row.id)"
-          :key="item.id"
-          class="gantt-item"
-          :data-item-id="item.id"
-          :style="{
-            left: getItemPosition(item).left + 'px',
-            width: getItemPosition(item).width + 'px'
-          }"
-          @mousedown="startDrag($event, item)"
-          @mouseenter="showTooltip($event, item)"
-          @mouseleave="hideTooltip"
-          @dblclick="props.onItemEdit?.(item)"
-          @contextmenu="showContextMenu($event, item)"
-        >
-          <div class="gantt-item-content">
-            <span class="gantt-item-label">{{ item.label }}</span>
-            <span v-if="item.progress !== undefined" class="gantt-item-progress">{{ item.progress }}%</span>
-          </div>
-          <div class="gantt-item-drag-hint">
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/>
-              <circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>
-            </svg>
-          </div>
-          <div class="gantt-progress-bar" v-if="item.progress !== undefined">
-            <div class="gantt-progress-fill" :style="{ width: item.progress + '%' }"></div>
-          </div>
+        <!-- Row items - clipped to row bounds -->
+        <div class="gantt-row-items">
           <div
-            class="gantt-resize-handle gantt-resize-left"
-            @mousedown.stop="startResize($event, item, 'left')"
-          ></div>
-          <div
-            class="gantt-resize-handle gantt-resize-right"
-            @mousedown.stop="startResize($event, item, 'right')"
-          ></div>
-          <div class="gantt-item-overlay">
-            <button class="gantt-overlay-btn" @click.stop="props.onItemEdit?.(item)" title="Edit">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </button>
-            <button class="gantt-overlay-btn delete" @click.stop="props.onItemDelete?.(item.id)" title="Delete">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
-            </button>
+            v-for="item in (itemsByRow.get(row.id) || [])"
+            :key="item.id"
+            class="gantt-item"
+            :data-item-id="item.id"
+            :style="{
+              left: getItemPosition(item).left + 'px',
+              width: getItemPosition(item).width + 'px'
+            }"
+            @mousedown="canModify(item) ? startDrag($event, item) : undefined"
+            @mouseenter="showTooltip($event, item)"
+            @mouseleave="hideTooltip"
+            @dblclick="canModify(item) ? props.onItemEdit?.(item) : undefined"
+            @contextmenu="canModify(item) ? showContextMenu($event, item) : undefined"
+          >
+            <div class="gantt-item-content">
+              <span class="gantt-item-label">{{ item.label }}</span>
+              <div v-if="getAssignedUsers(item).length > 0" class="gantt-item-avatars">
+                <span
+                  v-for="u in getAssignedUsers(item).slice(0, 3)"
+                  :key="u.id"
+                  class="gantt-avatar-sm"
+                  :style="{ background: u.color || '#6366f1' }"
+                  :title="u.nombre"
+                >{{ u.avatar || u.nombre.substring(0, 2).toUpperCase() }}</span>
+                <span v-if="getAssignedUsers(item).length > 3" class="gantt-avatar-more">+{{ getAssignedUsers(item).length - 3 }}</span>
+              </div>
+              <span v-if="item.progress !== undefined && item.progress > 0" class="gantt-item-progress">{{ item.progress }}%</span>
+            </div>
+            <div class="gantt-progress-bar" v-if="item.progress !== undefined && item.progress > 0">
+              <div class="gantt-progress-fill" :style="{ width: item.progress + '%' }"></div>
+            </div>
+            <div
+              v-if="canModify(item)"
+              class="gantt-resize-handle gantt-resize-left"
+              @mousedown.stop="startResize($event, item, 'left')"
+            ></div>
+            <div
+              v-if="canModify(item)"
+              class="gantt-resize-handle gantt-resize-right"
+              @mousedown.stop="startResize($event, item, 'right')"
+            ></div>
+            <div class="gantt-item-overlay" v-if="canModify(item)">
+              <button class="gantt-overlay-btn edit" @click.stop="props.onItemEdit?.(item)" title="Editar tarea">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button class="gantt-overlay-btn delete" @click.stop="props.onItemDelete?.(item.id)" title="Eliminar tarea">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -448,20 +437,24 @@ onUnmounted(() => {
       >
         <div class="gantt-tooltip-title">{{ tooltip.item.label }}</div>
         <div class="gantt-tooltip-row">
-          <span class="gantt-tooltip-label">Start:</span>
+          <span class="gantt-tooltip-label">Inicio:</span>
           <span>{{ formatDate(tooltip.item.time.start) }}</span>
         </div>
         <div class="gantt-tooltip-row">
-          <span class="gantt-tooltip-label">End:</span>
+          <span class="gantt-tooltip-label">Fin:</span>
           <span>{{ formatDate(tooltip.item.time.end) }}</span>
         </div>
         <div class="gantt-tooltip-row">
-          <span class="gantt-tooltip-label">Duration:</span>
-          <span>{{ Math.round((tooltip.item.time.end - tooltip.item.time.start) / 86400000) }} days</span>
+          <span class="gantt-tooltip-label">Duracion:</span>
+          <span>{{ Math.round((tooltip.item.time.end - tooltip.item.time.start) / 86400000) }} dias</span>
         </div>
-        <div v-if="tooltip.item.progress !== undefined" class="gantt-tooltip-row">
-          <span class="gantt-tooltip-label">Progress:</span>
+        <div v-if="tooltip.item.progress !== undefined && tooltip.item.progress > 0" class="gantt-tooltip-row">
+          <span class="gantt-tooltip-label">Progreso:</span>
           <span>{{ tooltip.item.progress }}%</span>
+        </div>
+        <div class="gantt-tooltip-row">
+          <span class="gantt-tooltip-label">Asignados:</span>
+          <span class="gantt-tooltip-users">{{ getAssignedUserNames(tooltip.item) }}</span>
         </div>
       </div>
     </Teleport>
@@ -479,14 +472,14 @@ onUnmounted(() => {
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
-          Edit Task
+          Editar tarea
         </button>
         <button class="context-menu-item" @click="handleContextCopy">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
           </svg>
-          Copy to Clipboard
+          Copiar al portapapeles
         </button>
         <div class="context-menu-divider"></div>
         <button class="context-menu-item danger" @click="handleContextDelete">
@@ -494,7 +487,7 @@ onUnmounted(() => {
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
           </svg>
-          Delete Task
+          Eliminar tarea
         </button>
       </div>
     </Teleport>
@@ -506,7 +499,7 @@ onUnmounted(() => {
   flex: 1;
   overflow: auto;
   position: relative;
-  background: #0a0a14;
+  background: var(--bg-timeline);
 }
 
 .gantt-timeline-content {
@@ -528,16 +521,16 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   bottom: 0;
-  border-right: 1px solid #1a1a2e;
-  background: rgba(255, 255, 255, 0.01);
+  border-right: 1px solid var(--border-primary);
+  background: transparent;
 }
 
 .gantt-segment.is-weekend {
-  background: rgba(99, 102, 241, 0.05);
+  background: var(--bg-weekend);
 }
 
 .gantt-segment.is-today {
-  background: rgba(99, 102, 241, 0.15);
+  background: var(--bg-today);
 }
 
 .gantt-segment-label {
@@ -545,7 +538,7 @@ onUnmounted(() => {
   top: 4px;
   left: 4px;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--text-dimmed);
   font-weight: 500;
 }
 
@@ -581,32 +574,34 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.gantt-row-bg {
-  position: absolute;
-  left: 0;
-  right: 0;
-  pointer-events: none;
-}
-
-.gantt-row-bg.is-even {
-  background: rgba(255, 255, 255, 0.02);
-}
-
 .gantt-row {
   position: absolute;
   left: 0;
   right: 0;
-  display: flex;
-  align-items: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.gantt-row.is-even {
+  background: var(--bg-weekend);
+}
+
+.gantt-row-items {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .gantt-item {
   position: absolute;
   height: 32px;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, var(--bg-item-start) 0%, var(--bg-item-end) 100%);
   color: white;
   border-radius: 8px;
-  padding: 0 8px;
+  padding: 0 26px 0 12px;
   font-size: 12px;
   font-weight: 500;
   display: flex;
@@ -614,29 +609,30 @@ onUnmounted(() => {
   justify-content: center;
   cursor: grab;
   user-select: none;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-item), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
   z-index: 10;
+  min-width: 30px;
 }
 
 .gantt-item:hover {
-  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-50%) scale(1.02);
   z-index: 20;
 }
 
 .gantt-item:active {
   cursor: grabbing;
-  transform: translateY(-1px) scale(1.01);
+  transform: translateY(-50%) scale(1.01);
 }
 
 .gantt-item-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 6px;
   width: 100%;
-  padding-right: 20px;
+  overflow: hidden;
 }
 
 .gantt-item-label {
@@ -645,6 +641,7 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  min-width: 0;
 }
 
 .gantt-item-progress {
@@ -655,51 +652,33 @@ onUnmounted(() => {
   border-radius: 4px;
 }
 
-.gantt-item-drag-hint {
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  opacity: 0.4;
-}
-
-.gantt-item-overlay {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
+.gantt-item-avatars {
   display: flex;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity 0.15s;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
-.gantt-item:hover .gantt-item-overlay {
-  opacity: 1;
-}
-
-.gantt-overlay-btn {
-  width: 22px;
-  height: 22px;
-  border: none;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(4px);
-  border-radius: 6px;
-  cursor: pointer;
-  color: #fff;
+.gantt-avatar-sm {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
 }
 
-.gantt-overlay-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
-}
-
-.gantt-overlay-btn.delete:hover {
-  background: #dc2626;
+.gantt-avatar-more {
+  font-size: 8px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 4px;
+  border-radius: 8px;
+  color: #fff;
 }
 
 .gantt-progress-bar {
@@ -719,11 +698,54 @@ onUnmounted(() => {
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.gantt-item-overlay {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.gantt-item:hover .gantt-item-overlay {
+  opacity: 1;
+}
+
+.gantt-overlay-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  border-radius: 6px;
+  cursor: pointer;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.gantt-overlay-btn:hover {
+  transform: scale(1.15);
+}
+
+.gantt-overlay-btn.edit:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.gantt-overlay-btn.delete:hover {
+  background: #dc2626;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+}
+
 .gantt-resize-handle {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 10px;
+  width: 8px;
   cursor: ew-resize;
   z-index: 15;
   opacity: 0;
@@ -755,46 +777,54 @@ onUnmounted(() => {
 .gantt-tooltip {
   position: fixed;
   transform: translate(-50%, -100%);
-  background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
-  border: 1px solid #3a3a5a;
+  background: var(--bg-card);
+  border: 1px solid var(--border-secondary);
   border-radius: 8px;
   padding: 12px 16px;
   z-index: 1000;
   pointer-events: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lg);
   min-width: 180px;
 }
 
 .gantt-tooltip-title {
   font-weight: 600;
   font-size: 14px;
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #3a3a5a;
+  border-bottom: 1px solid var(--border-secondary);
 }
 
 .gantt-tooltip-row {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
   margin-top: 4px;
 }
 
 .gantt-tooltip-label {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
+}
+
+.gantt-tooltip-users {
+  text-align: right;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gantt-context-menu {
   position: fixed;
-  background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
-  border: 1px solid #3a3a5a;
+  background: var(--bg-card);
+  border: 1px solid var(--border-secondary);
   border-radius: 8px;
   padding: 6px;
   z-index: 1001;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  min-width: 160px;
+  box-shadow: var(--shadow-lg);
+  min-width: 180px;
 }
 
 .context-menu-item {
@@ -805,7 +835,7 @@ onUnmounted(() => {
   padding: 10px 12px;
   border: none;
   background: none;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
   border-radius: 6px;
@@ -814,7 +844,7 @@ onUnmounted(() => {
 
 .context-menu-item:hover {
   background: rgba(99, 102, 241, 0.2);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .context-menu-item.danger {
@@ -827,7 +857,7 @@ onUnmounted(() => {
 
 .context-menu-divider {
   height: 1px;
-  background: #3a3a5a;
+  background: var(--border-secondary);
   margin: 6px 0;
 }
 </style>

@@ -2,46 +2,34 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 
-const emit = defineEmits(['login-success'])
-
 const authStore = useAuthStore()
 
-const email = ref('')
-const password = ref('')
-const error = ref('')
+const emit = defineEmits(['login-success'])
+
+const formData = ref({
+  usuario: '',
+  password: ''
+})
 const isLoading = ref(false)
+const error = ref('')
 
-function handleSubmit() {
-  error.value = ''
-  
-  if (!email.value) {
-    error.value = 'El email es requerido'
+async function handleLogin() {
+  if (!formData.value.usuario || !formData.value.password) {
+    error.value = 'Por favor complete todos los campos'
     return
   }
-  
-  if (!password.value) {
-    error.value = 'La contraseña es requerida'
-    return
-  }
-  
+
   isLoading.value = true
-  
-  setTimeout(() => {
-    const success = authStore.login(email.value, password.value)
-    
-    if (success) {
-      emit('login-success')
-    } else {
-      error.value = 'Credenciales inválidas. Use cualquier email de la lista y contraseña de 4+ caracteres.'
-    }
-    
-    isLoading.value = false
-  }, 500)
-}
+  error.value = ''
 
-function selectQuickUser(userEmail: string) {
-  email.value = userEmail
-  password.value = '1234'
+  try {
+    await authStore.login(formData.value.usuario, formData.value.password)
+    emit('login-success')
+  } catch (e: any) {
+    error.value = e.message || 'Credenciales invalidas'
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -49,59 +37,42 @@ function selectQuickUser(userEmail: string) {
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <img src="./assets/Logo_Grupo_Epem.png" alt="Grupo Epem" class="logo" />
+        <img src="../assets/Logo_Grupo_Epem.png" alt="Grupo Epem" class="logo" />
         <h1>BI Gantt EPEM</h1>
-        <p>Inicia sesión para continuar</p>
+        <p>Ingresa tus credenciales para continuar</p>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="login-form">
+      <form @submit.prevent="handleLogin" class="login-form">
+        <div v-if="error" class="error-message">{{ error }}</div>
+
         <div class="form-group">
-          <label for="email">Correo Electrónico</label>
+          <label for="usuario">Usuario</label>
           <input
-            id="email"
-            v-model="email"
-            type="email"
-            placeholder="correo@epem.com"
-            autocomplete="email"
+            id="usuario"
+            v-model="formData.usuario"
+            type="text"
+            placeholder="Emmanuel Villasanti"
+            class="form-input"
+            :disabled="isLoading"
           />
         </div>
 
         <div class="form-group">
-          <label for="password">Contraseña</label>
+          <label for="password">Contrasena</label>
           <input
             id="password"
-            v-model="password"
+            v-model="formData.password"
             type="password"
-            placeholder="••••••••"
-            autocomplete="current-password"
+            placeholder="Ingresa tu contrasena"
+            class="form-input"
+            :disabled="isLoading"
           />
-        </div>
-
-        <div v-if="error" class="error-message">
-          {{ error }}
         </div>
 
         <button type="submit" class="login-btn" :disabled="isLoading">
-          <span v-if="isLoading">Iniciando sesión...</span>
-          <span v-else>Iniciar Sesión</span>
+          {{ isLoading ? 'Iniciando sesion...' : 'Iniciar Sesion' }}
         </button>
       </form>
-
-      <div class="quick-users">
-        <p class="quick-label">Usuarios de prueba (clic rápido):</p>
-        <div class="user-chips">
-          <button
-            v-for="user in authStore.usuariosDisponibles"
-            :key="user.id"
-            class="user-chip"
-            @click="selectQuickUser(user.email)"
-            type="button"
-          >
-            <span class="user-avatar">{{ user.avatar }}</span>
-            <span class="user-name">{{ user.nombre }}</span>
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -112,18 +83,18 @@ function selectQuickUser(userEmail: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, #16213e 100%);
   padding: 20px;
 }
 
 .login-card {
-  background: linear-gradient(180deg, #1e1e2e 0%, #2a2a3e 100%);
-  border: 1px solid #3a3a5a;
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card-end) 100%);
+  border: 1px solid var(--border-secondary);
   border-radius: 16px;
   padding: 40px;
   width: 100%;
   max-width: 420px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
 }
 
 .login-header {
@@ -137,14 +108,13 @@ function selectQuickUser(userEmail: string) {
 }
 
 .login-header h1 {
-  color: #fff;
-  font-size: 24px;
+  color: var(--text-primary);
   font-weight: 600;
   margin-bottom: 8px;
 }
 
 .login-header p {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-tertiary);
   font-size: 14px;
 }
 
@@ -154,6 +124,16 @@ function selectQuickUser(userEmail: string) {
   gap: 20px;
 }
 
+.error-message {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: center;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -161,115 +141,55 @@ function selectQuickUser(userEmail: string) {
 }
 
 .form-group label {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 13px;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
-.form-group input {
+.form-input {
   padding: 14px 16px;
-  background: #0f0f1a;
-  border: 1px solid #3a3a5a;
-  border-radius: 8px;
-  color: #fff;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  color: var(--text-primary);
   font-size: 14px;
   transition: all 0.2s;
 }
 
-.form-group input:focus {
+.form-input:focus {
   outline: none;
-  border-color: #6366f1;
+  border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
-.form-group input::placeholder {
-  color: #666;
+.form-input::placeholder {
+  color: var(--text-dimmed);
 }
 
-.error-message {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid #dc2626;
-  border-radius: 8px;
-  padding: 12px;
-  color: #f87171;
-  font-size: 13px;
-  text-align: center;
+.form-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .login-btn {
-  padding: 14px 24px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  padding: 14px 20px;
+  background: linear-gradient(135deg, var(--text-accent) 0%, #8b5cf6 100%);
   border: none;
-  border-radius: 8px;
-  color: #fff;
+  border-radius: 10px;
+  color: var(--text-primary);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  margin-top: 8px;
 }
 
 .login-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
 }
 
 .login-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.quick-users {
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid #3a3a5a;
-}
-
-.quick-label {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
-  margin-bottom: 12px;
-  text-align: center;
-}
-
-.user-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-}
-
-.user-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #2a2a4a;
-  border: 1px solid #3a3a5a;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.user-chip:hover {
-  background: #3a3a5a;
-  border-color: #6366f1;
-}
-
-.user-avatar {
-  width: 24px;
-  height: 24px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.user-name {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
 }
 </style>

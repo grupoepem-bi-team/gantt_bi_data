@@ -3,6 +3,11 @@ export interface Usuario {
   nombre: string
   email: string
   avatar?: string
+  color?: string
+  rol?: string
+  debe_cambiar_password?: boolean
+  fecha_creacion?: string
+  ultimo_acceso?: string
 }
 
 export interface GanttItem {
@@ -12,6 +17,9 @@ export interface GanttItem {
   time: { start: number; end: number }
   progress?: number
   assignedUserId?: string
+  assignedUserIds?: string[]
+  createdBy?: string
+  color?: string
 }
 
 export interface GanttRow {
