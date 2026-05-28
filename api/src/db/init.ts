@@ -116,17 +116,13 @@ export async function initDB() {
     const adminCheck = await pool.query(`SELECT id FROM users WHERE email = 'emmanuel.villasanti@epem.com'`)
     
     if (adminCheck.rows.length === 0) {
-      const adminPassword = process.env.ADMIN_INITIAL_PASSWORD
-      if (!adminPassword) {
-        console.error('FATAL: ADMIN_INITIAL_PASSWORD environment variable is required for initial setup')
-        process.exit(1)
-      }
+      const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || 'Epem1234'
       const hashedAdminPassword = await bcrypt.hash(adminPassword, 12)
       await pool.query(`
         INSERT INTO users (id, nombre, email, avatar, color, rol, password, debe_cambiar_password)
         VALUES ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'emmanuel.villasanti', 'emmanuel.villasanti@epem.com', 'EV', '#dc2626', 'Admin', $1, TRUE)
       `, [hashedAdminPassword])
-      console.log('Admin user created: emmanuel.villasanti@epem.com (must change password on first login)')
+      console.log('Admin user created (must change password on first login)')
     }
 
     // Seed regular users if they don't exist

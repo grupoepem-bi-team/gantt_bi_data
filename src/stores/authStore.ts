@@ -239,6 +239,32 @@ export const useAuthStore = defineStore('auth', () => {
     return true
   }
 
+  async function resetPassword(userId: string, newPassword: string) {
+    try {
+      const response = await fetch(`${API_URL}/users/${userId}/reset-password`, {
+        method: 'PUT',
+        headers: authHeaders(token.value),
+        body: JSON.stringify({ password: newPassword })
+      })
+
+      if (response.status === 401) {
+        logout()
+        throw new Error('Sesion expirada')
+      }
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to reset password')
+      }
+
+      await fetchUsers()
+      return true
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
   function addLog(accion: ActividadLog['accion'], descripcion: string, targetId?: string, targetNombre?: string) {
     if (!user.value) return
     
@@ -382,6 +408,7 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     initFromStorage,
     refreshUser,
+    resetPassword,
     refreshToken,
     fetchUsers,
     fetchLogs

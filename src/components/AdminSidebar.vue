@@ -14,6 +14,8 @@ onMounted(() => {
   authStore.fetchLogs()
 })
 const deleteConfirmId = ref<string | null>(null)
+const resetPasswordId = ref<string | null>(null)
+const resetPasswordValue = ref('')
 
 const formData = ref({
   nombre: '',
@@ -25,7 +27,7 @@ const formData = ref({
 const userFormValid = computed(() => {
   return formData.value.nombre.trim() !== '' &&
     formData.value.email.trim() !== '' &&
-    formData.value.password.trim().length >= 6
+    formData.value.password.trim().length >= 8
 })
 
 function resetForm() {
@@ -71,6 +73,23 @@ async function executeDelete() {
     await authStore.deleteUser(deleteConfirmId.value)
     deleteConfirmId.value = null
   }
+}
+
+async function executeResetPassword() {
+  if (!resetPasswordId.value || !resetPasswordValue.value) return
+  if (resetPasswordValue.value.length < 8) return
+  try {
+    await authStore.resetPassword(resetPasswordId.value, resetPasswordValue.value)
+    resetPasswordId.value = null
+    resetPasswordValue.value = ''
+  } catch (e) {
+    console.error('Error resetting password:', e)
+  }
+}
+
+function openResetPassword(userId: string) {
+  resetPasswordId.value = userId
+  resetPasswordValue.value = ''
 }
 
 function formatDate(isoString: string): string {
@@ -166,6 +185,18 @@ function getAccionColor(accion: string): string {
                 <span class="user-email">{{ user.email }}</span>
               </div>
               <span class="user-rol" :class="user.rol.toLowerCase()">{{ user.rol }}</span>
+              <span v-if="user.debe_cambiar_password" class="must-change-badge">Cambiar pass</span>
+              <button
+                v-if="user.id !== authStore.user?.id"
+                class="reset-btn"
+                @click="openResetPassword(user.id)"
+                title="Resetear contrasena"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </button>
               <button
                 v-if="user.id !== authStore.user?.id"
                 class="delete-btn"
@@ -249,7 +280,7 @@ function getAccionColor(accion: string): string {
               <input
                 v-model="formData.password"
                 type="password"
-                placeholder="Minimo 6 caracteres"
+                placeholder="Minimo 8 caracteres"
                 class="form-input"
               />
             </div>
@@ -278,6 +309,45 @@ function getAccionColor(accion: string): string {
           <div class="modal-footer">
             <button class="btn-cancel" @click="cancelDelete">Cancelar</button>
             <button class="btn-delete" @click="executeDelete">Eliminar</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="resetPasswordId" class="modal-overlay" @click.self="resetPasswordId = null">
+        <div class="modal">
+          <div class="modal-header">
+            <h3>Resetear Contrasena</h3>
+            <button class="close-btn" @click="resetPasswordId = null; resetPasswordValue = ''">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">
+              El usuario debera cambiar la contrasena en su proximo inicio de sesion.
+            </p>
+            <div class="form-group">
+              <label>Nueva Contrasena</label>
+              <input
+                v-model="resetPasswordValue"
+                type="password"
+                placeholder="Minimo 8 caracteres"
+                class="form-input"
+                @keyup.enter="executeResetPassword"
+              />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" @click="resetPasswordId = null; resetPasswordValue = ''">Cancelar</button>
+            <button
+              class="btn-save"
+              :disabled="resetPasswordValue.length < 8"
+              @click="executeResetPassword"
+            >
+              Resetear Contrasena
+            </button>
           </div>
         </div>
       </div>
@@ -493,6 +563,32 @@ function getAccionColor(accion: string): string {
 .delete-btn:hover {
   background: rgba(239, 68, 68, 0.2);
   border-color: #ef4444;
+}
+
+.must-change-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  white-space: nowrap;
+}
+
+.reset-btn {
+  padding: 6px;
+  background: none;
+  border: 1px solid var(--border-secondary);
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--text-accent);
+  color: var(--text-accent);
 }
 
 .logs-list {

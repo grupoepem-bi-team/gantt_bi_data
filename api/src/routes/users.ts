@@ -279,6 +279,33 @@ router.put('/:id', authMiddleware, requireAdmin, validateUUID('id'), async (req,
   }
 })
 
+// Reset user password (admin only) - sets debe_cambiar_password=TRUE
+router.put('/:id/reset-password', authMiddleware, requireAdmin, validateUUID('id'), async (req, res) => {
+  try {
+    const { password } = req.body
+    if (!password || password.length < PASSWORD_MIN_LENGTH) {
+      return res.status(400).json({ error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters` })
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const result = await query(
+      'UPDATE users SET password = $1, debe_cambiar_password = TRUE WHERE id = $2 RETURNING id, nombre, email, rol, debe_cambiar_password',
+      [hashedPassword, req.params.id]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    await blacklistAllUserTokens(req.params.id)
+
+    res.json({ ...result.rows[0], message: 'Password reset. User must change on next login.' })
+  } catch (error) {
+    console.error('Error resetting password:', error)
+    res.status(500).json({ error: 'Failed to reset password' })
+  }
+})
+
 // Delete user (admin only)
 router.delete('/:id', authMiddleware, requireAdmin, validateUUID('id'), async (req, res) => {
   try {
