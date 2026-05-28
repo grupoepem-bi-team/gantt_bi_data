@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { query } from '../db/connection.js'
+import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
-// Get dashboard stats
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const totalItemsResult = await query('SELECT COUNT(*) FROM gantt_items')
     const totalItems = parseInt(totalItemsResult.rows[0].count)

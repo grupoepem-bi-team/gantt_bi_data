@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS activity_logs (
     fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert default admin user emmanuel.villasanti (password: epem2023@@)
+-- Insert default admin user (password set via ADMIN_INITIAL_PASSWORD env var)
 INSERT INTO users (id, nombre, email, avatar, color, rol, password, debe_cambiar_password)
 VALUES (
     'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -74,7 +74,7 @@ VALUES (
     '#dc2626',
     'Admin',
     '$2b$10$1vqOZLt0f11LZ9KFtNjF9uuY4sWk8slNYRkg4jKJq9fYo/rQbq3SC',
-    FALSE
+    TRUE
 ) ON CONFLICT (email) DO NOTHING;
 
 -- Insert default rows

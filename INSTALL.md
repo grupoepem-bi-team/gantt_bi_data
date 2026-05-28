@@ -1,4 +1,4 @@
-# BI Gantt EPEM — Documentación Técnica
+# BI GANTT — Documentación Técnica
 
 ## Tabla de Contenidos
 
@@ -21,7 +21,7 @@
 
 ## 1. Descripción General
 
-BI Gantt EPEM es una aplicación web de diagramas de Gantt para gestión de proyectos, construida con **Vue 3** (frontend) y **Express.js** (backend API), con **PostgreSQL** como base de datos. Incluye autenticación JWT, roles de usuario (Admin/Usuario), exportación a Excel, vista calendario, y modo oscuro/claro.
+BI GANTT es una aplicación web de diagramas de Gantt para gestión de proyectos, construida con **Vue 3** (frontend) y **Express.js** (backend API), con **PostgreSQL** como base de datos. Incluye autenticación JWT, roles de usuario (Admin/Usuario), exportación a Excel, vista calendario, y modo oscuro/claro.
 
 ### Stack Tecnológico
 

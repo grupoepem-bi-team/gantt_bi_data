@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { query } from '../db/connection.js'
+import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
-// Get comments for item
-router.get('/item/:itemId', async (req, res) => {
+router.get('/item/:itemId', authMiddleware, async (req, res) => {
   try {
     const { limit = 50, offset = 0 } = req.query
     const result = await query(
@@ -23,8 +23,7 @@ router.get('/item/:itemId', async (req, res) => {
   }
 })
 
-// Create comment
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { item_id, user_id, contenido } = req.body
 
@@ -46,8 +45,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Update comment
-router.put('/:id', async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { contenido } = req.body
 
@@ -72,8 +70,7 @@ router.put('/:id', async (req, res) => {
   }
 })
 
-// Delete comment
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       'DELETE FROM comments WHERE id = $1 RETURNING id',

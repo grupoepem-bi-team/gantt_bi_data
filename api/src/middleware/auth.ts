@@ -2,9 +2,10 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { query } from '../db/connection.js'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-fallback-change-in-production'
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-  console.error('WARNING: JWT_SECRET not set. Using insecure fallback. Set JWT_SECRET for production.')
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET env var is required. Set it in .env.docker or docker-compose.')
+  process.exit(1)
 }
 
 export interface AuthUser {

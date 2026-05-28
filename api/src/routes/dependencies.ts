@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { query } from '../db/connection.js'
+import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
-// Get all dependencies
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const result = await query(`
       SELECT d.*,
@@ -22,8 +22,7 @@ router.get('/', async (req, res) => {
   }
 })
 
-// Create dependency
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { from_item_id, to_item_id } = req.body
 
@@ -52,8 +51,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Delete dependency
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       'DELETE FROM gantt_dependencies WHERE id = $1 RETURNING id',

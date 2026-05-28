@@ -1,4 +1,4 @@
-# MEMORIA - BI Gantt EPEM
+# MEMORIA - BI GANTT
 
 ## Estado del Proyecto (27 Mayo 2026)
 
@@ -97,7 +97,7 @@ App.vue
 ```
 
 ### Layout Principal
-- **Header**: Logo + "BI Gantt EPEM" + Calendar toggle + Admin btn + Profile btn (con logout)
+- **Header**: Logo + "BI GANTT" + Calendar toggle + Admin btn + Profile btn (con logout)
 - **GanttChart**: Panel izquierdo (categorias 260px) + Timeline (flex:1)
 - **Toolbar**: Dentro de gantt-timeline-header: search, filtros, "Nueva", "Exportar", tema
 - **Zoom**: Botones flotantes en esquina inferior izquierda

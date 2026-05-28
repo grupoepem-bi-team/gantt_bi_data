@@ -1,8 +1,8 @@
-# BI Gantt EPEM — Guía de Usuario
+# BI GANTT — Guía de Usuario
 
 ## Tabla de Contenidos
 
-1. [¿Qué es BI Gantt EPEM?](#1-qué-es-bi-gantt-epem)
+1. [¿Qué es BI GANTT?](#1-qué-es-bi-gantt)
 2. [Primeros Pasos](#2-primeros-pasos)
 3. [Iniciar Sesión](#3-iniciar-sesión)
 4. [Cambiar Contraseña](#4-cambiar-contraseña)
@@ -26,9 +26,9 @@
 
 ---
 
-## 1. ¿Qué es BI Gantt EPEM?
+## 1. ¿Qué es BI GANTT?
 
-BI Gantt EPEM es una herramienta web para planificar y visualizar proyectos usando **diagramas de Gantt**. Permite:
+BI GANTT es una herramienta web para planificar y visualizar proyectos usando **diagramas de Gantt**. Permite:
 
 - Crear, editar y eliminar tareas
 - Asignar tareas a personas del equipo

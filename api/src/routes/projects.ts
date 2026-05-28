@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { query } from '../db/connection.js'
+import { authMiddleware, requireAdmin } from '../middleware/auth.js'
 
 const router = Router()
 
-// Get all projects
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       `SELECT p.*, u.nombre as created_by_nombre,
@@ -20,8 +20,7 @@ router.get('/', async (req, res) => {
   }
 })
 
-// Get project by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       `SELECT p.*, u.nombre as created_by_nombre
@@ -42,8 +41,7 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-// Get rows for project
-router.get('/:id/rows', async (req, res) => {
+router.get('/:id/rows', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       'SELECT * FROM gantt_rows WHERE project_id = $1 ORDER BY orden',
@@ -56,8 +54,7 @@ router.get('/:id/rows', async (req, res) => {
   }
 })
 
-// Create project
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { nombre, descripcion, color, fecha_inicio, fecha_fin, created_by } = req.body
 
@@ -79,8 +76,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Update project
-router.put('/:id', async (req, res) => {
+router.put('/:id', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { nombre, descripcion, color, fecha_inicio, fecha_fin, estado } = req.body
     const updates: string[] = []
@@ -141,8 +137,7 @@ router.put('/:id', async (req, res) => {
   }
 })
 
-// Delete project
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const result = await query(
       'DELETE FROM projects WHERE id = $1 RETURNING id',

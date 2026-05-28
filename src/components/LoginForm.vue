@@ -38,7 +38,7 @@ async function handleLogin() {
     <div class="login-card">
       <div class="login-header">
         <img src="../assets/Logo_Grupo_Epem.png" alt="Grupo Epem" class="logo" />
-        <h1>BI Gantt EPEM</h1>
+        <h1>BI GANTT</h1>
         <p>Ingresa tus credenciales para continuar</p>
       </div>
 

@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { query } from '../db/connection.js'
+import { authMiddleware, requireAdmin } from '../middleware/auth.js'
 
 const router = Router()
 
-// Get all sessions for user
-router.get('/user/:userId', async (req, res) => {
+router.get('/user/:userId', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const result = await query(
       `SELECT id, token, ip_address, user_agent, fecha_creacion, fecha_expiracion, fecha_ultimo_acceso, activo
@@ -18,8 +18,7 @@ router.get('/user/:userId', async (req, res) => {
   }
 })
 
-// Create session
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { user_id, token, ip_address, user_agent, fecha_expiracion } = req.body
 
@@ -41,8 +40,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Update last access
-router.put('/:id/last-access', async (req, res) => {
+router.put('/:id/last-access', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       `UPDATE sessions SET fecha_ultimo_acceso = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
@@ -60,8 +58,7 @@ router.put('/:id/last-access', async (req, res) => {
   }
 })
 
-// Deactivate session
-router.put('/:id/deactivate', async (req, res) => {
+router.put('/:id/deactivate', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       `UPDATE sessions SET activo = FALSE WHERE id = $1 RETURNING *`,
@@ -79,8 +76,7 @@ router.put('/:id/deactivate', async (req, res) => {
   }
 })
 
-// Delete session
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       'DELETE FROM sessions WHERE id = $1 RETURNING id',
@@ -98,8 +94,7 @@ router.delete('/:id', async (req, res) => {
   }
 })
 
-// Delete all sessions for user
-router.delete('/user/:userId/all', async (req, res) => {
+router.delete('/user/:userId/all', authMiddleware, requireAdmin, async (req, res) => {
   try {
     await query('DELETE FROM sessions WHERE user_id = $1', [req.params.userId])
     res.json({ message: 'All sessions deleted for user' })

@@ -5,7 +5,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-gantt_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gantt_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?FATAL: Set POSTGRES_PASSWORD in .env.docker}
       POSTGRES_DB: ${POSTGRES_DB:-gantt_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -30,15 +30,13 @@ services:
       dockerfile: Dockerfile
     container_name: gantt_api
     restart: always
-    ports:
-      - "${API_PORT:-3000}:3000"
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://gantt_user:gantt_password@db:5432/gantt_db}
+      DATABASE_URL: ${DATABASE_URL:?FATAL: Set DATABASE_URL in .env.docker}
       PORT: 3000
       NODE_ENV: production
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-random-64-chars}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
-      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-ChangeMeNow1}
+      JWT_SECRET: ${JWT_SECRET:?FATAL: Set JWT_SECRET in .env.docker}
+      CORS_ORIGIN: ${CORS_ORIGIN:?FATAL: Set CORS_ORIGIN in .env.docker}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:?FATAL: Set ADMIN_INITIAL_PASSWORD in .env.docker}
       JEAN_INITIAL_PASSWORD: ${JEAN_INITIAL_PASSWORD:-}
       JESUS_INITIAL_PASSWORD: ${JESUS_INITIAL_PASSWORD:-}
     depends_on:
@@ -67,7 +65,7 @@ services:
     container_name: gantt_app
     restart: always
     ports:
-      - "${APP_PORT:-8080}:80"
+      - "${APP_PORT:-80}:80"
     depends_on:
       - api
     healthcheck:

@@ -300,7 +300,7 @@ function handleViewTask(_item: any) {
       <header class="header">
         <img src="./assets/Logo_Grupo_Epem.png" alt="Grupo Epem" class="logo" />
         <div class="title-group">
-          <h1>BI Gantt EPEM</h1>
+          <h1>BI GANTT</h1>
           <p class="subtitle">
             <template v-if="authStore.isAdmin">
               Administrador - Crear, editar, eliminar y asignar tareas

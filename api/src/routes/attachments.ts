@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { query } from '../db/connection.js'
+import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
-// Get attachments for item
-router.get('/item/:itemId', async (req, res) => {
+router.get('/item/:itemId', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       `SELECT a.*, u.nombre as user_nombre, u.avatar as user_avatar
@@ -21,8 +21,7 @@ router.get('/item/:itemId', async (req, res) => {
   }
 })
 
-// Create attachment
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { item_id, user_id, nombre, tipo, url, tamano_bytes } = req.body
 
@@ -44,8 +43,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Delete attachment
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       'DELETE FROM attachments WHERE id = $1 RETURNING id',

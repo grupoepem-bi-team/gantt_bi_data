@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { query } from '../db/connection.js'
+import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
-// Get history for item
-router.get('/item/:itemId', async (req, res) => {
+router.get('/item/:itemId', authMiddleware, async (req, res) => {
   try {
     const { limit = 50, offset = 0 } = req.query
     const result = await query(
@@ -23,8 +23,7 @@ router.get('/item/:itemId', async (req, res) => {
   }
 })
 
-// Create history entry (auto when item is modified)
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { item_id, user_id, accion, cambios } = req.body
 
@@ -46,8 +45,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Get recent changes across all items
-router.get('/recent', async (req, res) => {
+router.get('/recent', authMiddleware, async (req, res) => {
   try {
     const { limit = 20 } = req.query
     const result = await query(

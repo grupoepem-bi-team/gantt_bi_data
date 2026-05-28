@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { query } from '../db/connection.js'
+import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
-// Get notifications for user
-router.get('/user/:userId', async (req, res) => {
+router.get('/user/:userId', authMiddleware, async (req, res) => {
   try {
     const { limit = 50, offset = 0, unread_only = false } = req.query
     let sql = `SELECT * FROM notifications WHERE user_id = $1`
@@ -25,8 +25,7 @@ router.get('/user/:userId', async (req, res) => {
   }
 })
 
-// Get unread count
-router.get('/user/:userId/unread-count', async (req, res) => {
+router.get('/user/:userId/unread-count', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND leida = FALSE',
@@ -39,8 +38,7 @@ router.get('/user/:userId/unread-count', async (req, res) => {
   }
 })
 
-// Create notification
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { user_id, tipo, titulo, mensaje, link } = req.body
 
@@ -62,8 +60,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Mark as read
-router.put('/:id/read', async (req, res) => {
+router.put('/:id/read', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       `UPDATE notifications SET leida = TRUE, fecha_leida = CURRENT_TIMESTAMP
@@ -82,8 +79,7 @@ router.put('/:id/read', async (req, res) => {
   }
 })
 
-// Mark all as read for user
-router.put('/user/:userId/read-all', async (req, res) => {
+router.put('/user/:userId/read-all', authMiddleware, async (req, res) => {
   try {
     await query(
       `UPDATE notifications SET leida = TRUE, fecha_leida = CURRENT_TIMESTAMP
@@ -97,8 +93,7 @@ router.put('/user/:userId/read-all', async (req, res) => {
   }
 })
 
-// Delete notification
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       'DELETE FROM notifications WHERE id = $1 RETURNING id',

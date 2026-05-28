@@ -8,6 +8,15 @@ import usersRouter from './routes/users.js'
 import rowsRouter from './routes/rows.js'
 import itemsRouter from './routes/items.js'
 import logsRouter from './routes/logs.js'
+import dependenciesRouter from './routes/dependencies.js'
+import projectsRouter from './routes/projects.js'
+import tagsRouter from './routes/tags.js'
+import commentsRouter from './routes/comments.js'
+import attachmentsRouter from './routes/attachments.js'
+import historyRouter from './routes/history.js'
+import notificationsRouter from './routes/notifications.js'
+import sessionsRouter from './routes/sessions.js'
+import statsRouter from './routes/stats.js'
 
 dotenv.config()
 
@@ -58,6 +67,15 @@ app.use('/api/users', usersRouter)
 app.use('/api/rows', rowsRouter)
 app.use('/api/items', itemsRouter)
 app.use('/api/logs', logsRouter)
+app.use('/api/dependencies', dependenciesRouter)
+app.use('/api/projects', projectsRouter)
+app.use('/api/tags', tagsRouter)
+app.use('/api/comments', commentsRouter)
+app.use('/api/attachments', attachmentsRouter)
+app.use('/api/history', historyRouter)
+app.use('/api/notifications', notificationsRouter)
+app.use('/api/sessions', sessionsRouter)
+app.use('/api/stats', statsRouter)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

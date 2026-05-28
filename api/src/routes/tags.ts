@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { query } from '../db/connection.js'
+import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
-// Get all tags
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       `SELECT t.*, u.nombre as created_by_nombre
@@ -19,8 +19,7 @@ router.get('/', async (req, res) => {
   }
 })
 
-// Get tags for item
-router.get('/item/:itemId', async (req, res) => {
+router.get('/item/:itemId', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       `SELECT t.* FROM tags t
@@ -36,8 +35,7 @@ router.get('/item/:itemId', async (req, res) => {
   }
 })
 
-// Create tag
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { nombre, color, created_by } = req.body
 
@@ -62,8 +60,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Add tag to item
-router.post('/item/:itemId', async (req, res) => {
+router.post('/item/:itemId', authMiddleware, async (req, res) => {
   try {
     const { tag_id } = req.body
 
@@ -85,8 +82,7 @@ router.post('/item/:itemId', async (req, res) => {
   }
 })
 
-// Remove tag from item
-router.delete('/item/:itemId/tag/:tagId', async (req, res) => {
+router.delete('/item/:itemId/tag/:tagId', authMiddleware, async (req, res) => {
   try {
     await query(
       'DELETE FROM item_tags WHERE item_id = $1 AND tag_id = $2',
@@ -99,8 +95,7 @@ router.delete('/item/:itemId/tag/:tagId', async (req, res) => {
   }
 })
 
-// Delete tag
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const result = await query(
       'DELETE FROM tags WHERE id = $1 RETURNING id',

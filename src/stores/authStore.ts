@@ -20,7 +20,7 @@ interface ActividadLog {
   fecha: string
 }
 
-const API_URL = '/api'
+const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 function authHeaders(token: string | null): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }

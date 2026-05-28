@@ -89,6 +89,14 @@ export async function initDB() {
 
     await pool.query(`DELETE FROM token_blacklist WHERE fecha_creacion < NOW() - INTERVAL '8 days'`)
 
+    setInterval(async () => {
+      try {
+        await pool.query(`DELETE FROM token_blacklist WHERE fecha_creacion < NOW() - INTERVAL '8 days'`)
+      } catch (e) {
+        console.error('Token blacklist purge error:', e)
+      }
+    }, 24 * 60 * 60 * 1000)
+
     // Create indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_items_row_id ON gantt_items(row_id)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_items_assigned_user ON gantt_items(assigned_user_id)`)
@@ -116,7 +124,11 @@ export async function initDB() {
     const adminCheck = await pool.query(`SELECT id FROM users WHERE email = 'emmanuel.villasanti@epem.com'`)
     
     if (adminCheck.rows.length === 0) {
-      const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || 'Epem1234'
+      const adminPassword = process.env.ADMIN_INITIAL_PASSWORD
+      if (!adminPassword) {
+        console.error('FATAL: ADMIN_INITIAL_PASSWORD env var is required. Set it in .env.docker or docker-compose.')
+        process.exit(1)
+      }
       const hashedAdminPassword = await bcrypt.hash(adminPassword, 12)
       await pool.query(`
         INSERT INTO users (id, nombre, email, avatar, color, rol, password, debe_cambiar_password)
