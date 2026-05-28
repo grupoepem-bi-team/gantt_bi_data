@@ -46,7 +46,7 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "@vercel_url"
+    "VITE_API_URL": "https://${VERCEL_URL}"
   },
   "headers": [
     {

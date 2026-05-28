@@ -270,8 +270,8 @@ async function handleRowDelete(rowId: string) {
   }
 }
 
-function handleExportExcel() {
-  exportToExcel(props.config, 'gantt-chart')
+async function handleExportExcel() {
+  await exportToExcel(props.config, 'gantt-chart')
 }
 
 function handleSearch() {

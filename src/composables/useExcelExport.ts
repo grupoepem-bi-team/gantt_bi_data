@@ -1,10 +1,10 @@
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import type { GanttConfig } from '@/types/gantt'
 import { date } from '@/utils/date'
 import { useAuthStore } from '@/stores/authStore'
 
 export function useExcelExport() {
-  function exportToExcel(config: GanttConfig, filename: string = 'gantt-chart') {
+  async function exportToExcel(config: GanttConfig, filename: string = 'gantt-chart') {
     const authStore = useAuthStore()
     const usuarios = authStore.usuariosDisponibles || authStore.usuarios || []
     const userMap = new Map(usuarios.map(u => [u.id, u.nombre]))
@@ -24,24 +24,37 @@ export function useExcelExport() {
       }
     })
 
-    const worksheet = XLSX.utils.json_to_sheet(data)
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Gantt Tasks')
 
-    worksheet['!cols'] = [
-      { wch: 25 },
-      { wch: 20 },
-      { wch: 18 },
-      { wch: 18 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 15 },
-      { wch: 20 },
-      { wch: 20 }
+    const columns = [
+      { header: 'Task Name', key: 'Task Name', width: 25 },
+      { header: 'Assigned Row', key: 'Assigned Row', width: 20 },
+      { header: 'Start Date', key: 'Start Date', width: 18 },
+      { header: 'End Date', key: 'End Date', width: 18 },
+      { header: 'Duration (days)', key: 'Duration (days)', width: 15 },
+      { header: 'Progress (%)', key: 'Progress (%)', width: 12 },
+      { header: 'Status', key: 'Status', width: 15 },
+      { header: 'Usuarios', key: 'Usuarios', width: 20 },
+      { header: 'Creado Por', key: 'Creado Por', width: 20 }
     ]
 
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Gantt Tasks')
+    worksheet.columns = columns
 
-    XLSX.writeFile(workbook, `${filename}.xlsx`)
+    worksheet.getRow(1).font = { bold: true }
+
+    data.forEach(row => {
+      worksheet.addRow(row)
+    })
+
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${filename}.xlsx`
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   function formatDate(timestamp: number): string {
