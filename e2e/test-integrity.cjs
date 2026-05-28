@@ -52,7 +52,8 @@ async function run() {
   console.log('=== 1. Auth & Login ===');
 
   // 1.1 Admin login
-  const adminLogin = await login('emmanuel.villasanti', 'epem2023@@');
+  const ADMIN_PASSWORD = process.env.ADMIN_INITIAL_PASSWORD || 'epem2023@@';
+  const adminLogin = await login('emmanuel.villasanti', ADMIN_PASSWORD);
   ok('Admin login', `status=${adminLogin.status}`);
   if (adminLogin.status !== 200) { fail('Admin login', adminLogin.body.error); return; }
   const token = adminLogin.body.token;
@@ -184,11 +185,11 @@ async function run() {
   ok('POST /users (name<2 chars)', `status=${r.status} error=${r.body.error}`);
 
   // 3.11 Change password: too short
-  r = await api('POST', '/users/change-password', token, { currentPassword: 'epem2023@@', newPassword: '12345' });
+    r = await api('POST', '/users/change-password', token, { currentPassword: ADMIN_PASSWORD, newPassword: '12345' });
   ok('POST /change-password (short)', `status=${r.status} error=${r.body.error}`);
 
   // 3.12 Change password: missing fields
-  r = await api('POST', '/users/change-password', token, { currentPassword: 'epem2023@@' });
+    r = await api('POST', '/users/change-password', token, { currentPassword: ADMIN_PASSWORD });
   ok('POST /change-password (missing new)', `status=${r.status} error=${r.body.error}`);
 
   // 3.13 Change password: wrong current

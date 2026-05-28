@@ -269,11 +269,16 @@ async function handleRowDelete(rowId: string) {
       method: 'DELETE',
       headers: authHeaders(authStore.token)
     })
-    const data = await res.json()
     if (!res.ok) {
+      const text = await res.text()
+      let data: any = {}
+      try { data = JSON.parse(text) } catch {}
       alert(data.error || 'No se puede eliminar la categoría')
       return
     }
+    const text = await res.text()
+    let data: any = {}
+    try { data = JSON.parse(text) } catch {}
     emit('update:config', {
       ...props.config,
       rows: props.config.rows.filter(r => r.id !== rowId)

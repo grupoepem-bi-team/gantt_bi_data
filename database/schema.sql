@@ -198,8 +198,10 @@ CREATE TABLE IF NOT EXISTS token_blacklist (
 CREATE INDEX IF NOT EXISTS idx_token_blacklist_jti ON token_blacklist(token_jti);
 CREATE INDEX IF NOT EXISTS idx_token_blacklist_user ON token_blacklist(user_id);
 
--- Insert default admin user emmanuel.villasanti (password: epem2023@@)
--- Note: API init.ts also handles seed data, this is just for fresh DB initialization
+-- Insert default admin user emmanuel.villasanti
+-- Password will be set by API init.ts using ADMIN_INITIAL_PASSWORD env var
+-- debe_cambiar_password=TRUE forces password change on first login
+-- Note: API init.ts also handles seed data and will create this user if not present
 INSERT INTO users (id, nombre, email, avatar, color, rol, password, debe_cambiar_password)
 VALUES (
     'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -209,7 +211,7 @@ VALUES (
     '#dc2626',
     'Admin',
     '$2b$10$1vqOZLt0f11LZ9KFtNjF9uuY4sWk8slNYRkg4jKJq9fYo/rQbq3SC',
-    FALSE
+    TRUE
 ) ON CONFLICT (email) DO NOTHING;
 
 -- Insert default rows

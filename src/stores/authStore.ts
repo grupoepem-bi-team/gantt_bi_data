@@ -101,7 +101,9 @@ export const useAuthStore = defineStore('auth', () => {
         body: JSON.stringify({ usuario, password })
       })
       
-      const data = await response.json()
+      const text = await response.text()
+      let data: any = {}
+      try { data = JSON.parse(text) } catch {}
       
       if (!response.ok) {
         throw new Error(data.error || 'Login failed')
@@ -145,11 +147,15 @@ export const useAuthStore = defineStore('auth', () => {
       })
       
       if (!response.ok) {
-        const data = await response.json()
+        const text = await response.text()
+        let data: any = {}
+        try { data = JSON.parse(text) } catch {}
         throw new Error(data.error || 'Failed to change password')
       }
       
-      const data = await response.json()
+      const text = await response.text()
+      let data: any = {}
+      try { data = JSON.parse(text) } catch {}
       
       if (data.token) {
         token.value = data.token
@@ -185,7 +191,9 @@ export const useAuthStore = defineStore('auth', () => {
       }
       
       if (!response.ok) {
-        const res = await response.json()
+        const text = await response.text()
+        let res: any = {}
+        try { res = JSON.parse(text) } catch {}
         throw new Error(res.error || 'Failed to create user')
       }
       
@@ -211,7 +219,9 @@ export const useAuthStore = defineStore('auth', () => {
       }
       
       if (!response.ok) {
-        const data = await response.json()
+        const text = await response.text()
+        let data: any = {}
+        try { data = JSON.parse(text) } catch {}
         throw new Error(data.error || 'Failed to delete user')
       }
       
@@ -306,11 +316,16 @@ export const useAuthStore = defineStore('auth', () => {
         return false
       }
 
-      const data = await response.json()
-      token.value = data.token
+      const text = await response.text()
+      let data: any = {}
+      try { data = JSON.parse(text) } catch {}
+      
+      if (data.token) {
+        token.value = data.token
 
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('gantt_token', data.token)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('gantt_token', data.token)
+        }
       }
 
       return true

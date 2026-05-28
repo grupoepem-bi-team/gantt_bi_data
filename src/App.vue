@@ -157,10 +157,14 @@ async function saveItemToApi(item: GanttItem): Promise<GanttItem | null> {
     })
     
     if (response.ok) {
-      const apiItem = await response.json()
-      return mapApiItem(apiItem)
+      const text = await response.text()
+      let apiItem: any = null
+      try { apiItem = JSON.parse(text) } catch {}
+      if (apiItem) return mapApiItem(apiItem)
     } else {
-      const err = await response.json()
+      const text = await response.text()
+      let err: any = {}
+      try { err = JSON.parse(text) } catch {}
       console.error('Error creating item:', err)
     }
     return null
@@ -191,8 +195,10 @@ async function updateItemInApi(item: GanttItem): Promise<GanttItem | null> {
     })
     
     if (response.ok) {
-      const apiItem = await response.json()
-      return mapApiItem(apiItem)
+      const text = await response.text()
+      let apiItem: any = null
+      try { apiItem = JSON.parse(text) } catch {}
+      if (apiItem) return mapApiItem(apiItem)
     }
     return null
   } catch (e) {
