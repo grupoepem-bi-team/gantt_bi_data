@@ -1,11 +1,11 @@
 import { Router } from 'express'
 import { query } from '../db/connection.js'
-import { authMiddleware } from '../middleware/auth.js'
+import { authMiddleware, requireAdmin } from '../middleware/auth.js'
 
 const router = Router()
 
 // Get all logs with pagination and filtering (authenticated)
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { usuario_id, limit = 50, offset = 0 } = req.query
     let sql = 'SELECT * FROM activity_logs WHERE 1=1'

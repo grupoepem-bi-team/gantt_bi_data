@@ -6,7 +6,11 @@ import { validateUUID, validateEmail } from '../middleware/validators.js'
 
 const router = Router()
 
+const VALID_ROLES = ['Admin', 'Usuario']
+
 const DUMMY_HASH = '$2b$10$000000000000000000000uQ9MxY0Zz0Z3qZ5y7R8G9a0b1c2d3e4f'
+
+const PASSWORD_MIN_LENGTH = 8
 
 router.post('/login', async (req, res) => {
   try {
@@ -15,7 +19,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Usuario y password son requeridos' })
     }
 
-    const result = await query('SELECT * FROM users WHERE nombre ILIKE $1 OR email = $1', [usuario])
+    const result = await query('SELECT id, nombre, email, avatar, color, rol, password, fecha_creacion, ultimo_acceso, debe_cambiar_password FROM users WHERE LOWER(nombre) = LOWER($1) OR email = $1', [usuario])
 
     if (result.rows.length === 0) {
       await bcrypt.compare(password, DUMMY_HASH)
@@ -77,11 +81,11 @@ router.post('/change-password', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Current password and new password are required' })
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters' })
+    if (newPassword.length < PASSWORD_MIN_LENGTH) {
+      return res.status(400).json({ error: `New password must be at least ${PASSWORD_MIN_LENGTH} characters` })
     }
 
-    const result = await query('SELECT * FROM users WHERE id = $1', [userId])
+    const result = await query('SELECT id, nombre, email, avatar, color, rol, password, debe_cambiar_password FROM users WHERE id = $1', [userId])
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' })
     }
@@ -175,8 +179,8 @@ router.post('/', authMiddleware, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' })
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      return res.status(400).json({ error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters` })
     }
 
     if (!validateEmail(email)) {
@@ -231,13 +235,16 @@ router.put('/:id', authMiddleware, requireAdmin, validateUUID('id'), async (req,
       updates.push(`email = $${paramCount++}`)
       values.push(email.toLowerCase().trim())
     }
+    if (rol && !VALID_ROLES.includes(rol)) {
+      return res.status(400).json({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` })
+    }
     if (rol) {
       updates.push(`rol = $${paramCount++}`)
       values.push(rol)
     }
     if (password) {
-      if (password.length < 6) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters' })
+      if (password.length < PASSWORD_MIN_LENGTH) {
+        return res.status(400).json({ error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters` })
       }
       updates.push(`password = $${paramCount++}`)
       values.push(await bcrypt.hash(password, 10))

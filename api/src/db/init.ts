@@ -87,6 +87,8 @@ export async function initDB() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_token_blacklist_jti ON token_blacklist(token_jti)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_token_blacklist_user ON token_blacklist(user_id)`)
 
+    await pool.query(`DELETE FROM token_blacklist WHERE fecha_creacion < NOW() - INTERVAL '8 days'`)
+
     // Create indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_items_row_id ON gantt_items(row_id)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_items_assigned_user ON gantt_items(assigned_user_id)`)
@@ -114,33 +116,40 @@ export async function initDB() {
     const adminCheck = await pool.query(`SELECT id FROM users WHERE email = 'emmanuel.villasanti@epem.com'`)
     
     if (adminCheck.rows.length === 0) {
-      const hashedAdminPassword = await bcrypt.hash('epem2023@@', 10)
+      const adminPassword = process.env.ADMIN_INITIAL_PASSWORD
+      if (!adminPassword) {
+        console.error('FATAL: ADMIN_INITIAL_PASSWORD environment variable is required for initial setup')
+        process.exit(1)
+      }
+      const hashedAdminPassword = await bcrypt.hash(adminPassword, 12)
       await pool.query(`
         INSERT INTO users (id, nombre, email, avatar, color, rol, password, debe_cambiar_password)
-        VALUES ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'emmanuel.villasanti', 'emmanuel.villasanti@epem.com', 'EV', '#dc2626', 'Admin', $1, FALSE)
+        VALUES ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'emmanuel.villasanti', 'emmanuel.villasanti@epem.com', 'EV', '#dc2626', 'Admin', $1, TRUE)
       `, [hashedAdminPassword])
-      console.log('Admin user created: emmanuel.villasanti@epem.com / epem2023@@')
+      console.log('Admin user created: emmanuel.villasanti@epem.com (must change password on first login)')
     }
 
     // Seed regular users if they don't exist
     const jeanCheck = await pool.query(`SELECT id FROM users WHERE email = 'jean.sandoval@epem.com'`)
     if (jeanCheck.rows.length === 0) {
-      const hashedJeanPassword = await bcrypt.hash('jean123', 10)
+      const jeanPassword = process.env.JEAN_INITIAL_PASSWORD || crypto.randomUUID()
+      const hashedJeanPassword = await bcrypt.hash(jeanPassword, 12)
       await pool.query(`
         INSERT INTO users (id, nombre, email, avatar, color, rol, password, debe_cambiar_password)
-        VALUES ('e9c97244-73f2-4d53-8139-8a6b63e1abe0', 'Jean Sandoval', 'jean.sandoval@epem.com', 'JS', '#4f46e5', 'Usuario', $1, FALSE)
+        VALUES ('e9c97244-73f2-4d53-8139-8a6b63e1abe0', 'Jean Sandoval', 'jean.sandoval@epem.com', 'JS', '#4f46e5', 'Usuario', $1, TRUE)
       `, [hashedJeanPassword])
-      console.log('User created: jean.sandoval@epem.com / jean123')
+      console.log('User created: jean.sandoval@epem.com (must change password on first login)')
     }
 
     const jesusCheck = await pool.query(`SELECT id FROM users WHERE email = 'jesus.alvarenga@epem.com'`)
     if (jesusCheck.rows.length === 0) {
-      const hashedJesusPassword = await bcrypt.hash('jesus123', 10)
+      const jesusPassword = process.env.JESUS_INITIAL_PASSWORD || crypto.randomUUID()
+      const hashedJesusPassword = await bcrypt.hash(jesusPassword, 12)
       await pool.query(`
         INSERT INTO users (id, nombre, email, avatar, color, rol, password, debe_cambiar_password)
-        VALUES ('a60a15fd-41ad-4bb7-9984-a09b21c5be9f', 'Jesus Alvarenga', 'jesus.alvarenga@epem.com', 'JA', '#06b6d4', 'Usuario', $1, FALSE)
+        VALUES ('a60a15fd-41ad-4bb7-9984-a09b21c5be9f', 'Jesus Alvarenga', 'jesus.alvarenga@epem.com', 'JA', '#06b6d4', 'Usuario', $1, TRUE)
       `, [hashedJesusPassword])
-      console.log('User created: jesus.alvarenga@epem.com / jesus123')
+      console.log('User created: jesus.alvarenga@epem.com (must change password on first login)')
     }
 
     // Insert default rows if empty

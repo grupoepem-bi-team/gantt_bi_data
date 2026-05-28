@@ -18,15 +18,17 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:8080',
   process.env.CORS_ORIGIN
-].filter(Boolean)
+].filter((origin): origin is string => typeof origin === 'string' && origin.length > 0)
 
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
-}))
+if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
+  console.error('FATAL: CORS_ORIGIN environment variable is required in production')
+  process.exit(1)
+}
+
+app.use(helmet())
 
 app.use(cors({
-  origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+  origin: allowedOrigins,
   credentials: true
 }))
 
@@ -49,6 +51,7 @@ const apiLimiter = rateLimit({
 })
 
 app.use('/api/users/login', loginLimiter)
+app.use('/api/users/change-password', loginLimiter)
 app.use('/api', apiLimiter)
 
 app.use('/api/users', usersRouter)

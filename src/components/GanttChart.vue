@@ -3,6 +3,16 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import type { GanttConfig, GanttRow, GanttItem, Usuario } from '@/types/gantt'
 import { useExcelExport } from '@/composables/useExcelExport'
 import { useTheme } from '@/composables/useTheme'
+
+const API_URL = import.meta.env.VITE_API_URL || '/api'
+
+function authHeaders(token: string | null): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return headers
+}
 import { startOfDay, endOfDay } from '@/utils/date'
 import GanttList from '@/components/GanttList.vue'
 import GanttTimeline from '@/components/GanttTimeline.vue'
@@ -35,8 +45,6 @@ const selectedItemIndex = ref(-1)
 
 const listRef = ref<InstanceType<typeof GanttList> | null>(null)
 const timelineRef = ref<InstanceType<typeof GanttTimeline> | null>(null)
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 const filteredItems = computed(() => {
   if (searchMode.value === 'all') return props.config.items
@@ -209,9 +217,10 @@ async function handleRowCreate() {
   const label = prompt('Nombre de la nueva categoría:')
   if (!label?.trim()) return
   try {
+    const authStore = useAuthStore()
     const res = await fetch(`${API_URL}/rows`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(authStore.token),
       body: JSON.stringify({ label: label.trim(), orden: props.config.rows.length })
     })
     if (!res.ok) throw new Error('Failed to create row')
@@ -235,9 +244,10 @@ async function handleRowUpdate(rowId: string, newLabel: string) {
   }
   
   try {
+    const authStore = useAuthStore()
     const res = await fetch(`${API_URL}/rows/${rowId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(authStore.token),
       body: JSON.stringify({ label: newLabel })
     })
     if (!res.ok) throw new Error('Failed to update row')
@@ -254,7 +264,11 @@ async function handleRowUpdate(rowId: string, newLabel: string) {
 
 async function handleRowDelete(rowId: string) {
   try {
-    const res = await fetch(`${API_URL}/rows/${rowId}`, { method: 'DELETE' })
+    const authStore = useAuthStore()
+    const res = await fetch(`${API_URL}/rows/${rowId}`, {
+      method: 'DELETE',
+      headers: authHeaders(authStore.token)
+    })
     const data = await res.json()
     if (!res.ok) {
       alert(data.error || 'No se puede eliminar la categoría')

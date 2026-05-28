@@ -2,7 +2,11 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { query } from '../db/connection.js'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'gantt-bi-epem-secret-key-2026'
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is required')
+  process.exit(1)
+}
 
 export interface AuthUser {
   userId: string
@@ -33,6 +37,10 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as AuthUser
+
+    if ((decoded as any).type === 'refresh') {
+      return res.status(401).json({ error: 'Use refresh token endpoint for token rotation' })
+    }
 
     if (decoded.userId) {
       const invalidated = await isUserInvalidated(decoded.userId, decoded.jti)
@@ -82,7 +90,7 @@ export function generateToken(user: { id: string; rol: string; nombre: string; e
   return jwt.sign(
     { userId: user.id, rol: user.rol, nombre: user.nombre, email: user.email, jti },
     JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: '30m' }
   )
 }
 
@@ -100,7 +108,10 @@ export async function blacklistAllUserTokens(userId: string): Promise<void> {
       `INSERT INTO token_blacklist (user_id, token_jti) VALUES ($1, $2)`,
       [userId, `user-deleted-${userId}`]
     )
-  } catch {}
+  } catch (error) {
+    console.error('Failed to blacklist user tokens:', (error as Error).message)
+    throw error
+  }
 }
 
 export async function blacklistToken(userId: string, jti: string): Promise<void> {
@@ -109,7 +120,10 @@ export async function blacklistToken(userId: string, jti: string): Promise<void>
       `INSERT INTO token_blacklist (user_id, token_jti) VALUES ($1, $2)`,
       [userId, jti]
     )
-  } catch {}
+  } catch (error) {
+    console.error('Failed to blacklist token:', (error as Error).message)
+    throw error
+  }
 }
 
 export { JWT_SECRET }

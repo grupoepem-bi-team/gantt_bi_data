@@ -51,6 +51,13 @@ router.get('/', authMiddleware, async (req, res) => {
       offset = 0
     } = req.query
 
+    const safeLimit = Math.min(Math.max(Number(limit) || 100, 1), 500)
+    const safeOffset = Math.max(Number(offset) || 0, 0)
+
+    if (search && String(search).length > 100) {
+      return res.status(400).json({ error: 'Search query too long' })
+    }
+
     let sql = 'SELECT * FROM gantt_items WHERE 1=1'
     const params: unknown[] = []
     let paramCount = 0
@@ -68,26 +75,34 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 
     if (progress_min !== undefined) {
+      const val = Number(progress_min)
+      if (isNaN(val)) return res.status(400).json({ error: 'progress_min must be a number' })
       paramCount++
-      params.push(Number(progress_min))
+      params.push(val)
       sql += ` AND progress >= $${paramCount}`
     }
 
     if (progress_max !== undefined) {
+      const val = Number(progress_max)
+      if (isNaN(val)) return res.status(400).json({ error: 'progress_max must be a number' })
       paramCount++
-      params.push(Number(progress_max))
+      params.push(val)
       sql += ` AND progress <= $${paramCount}`
     }
 
     if (date_from) {
+      const d = new Date(String(date_from))
+      if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid date_from format' })
       paramCount++
-      params.push(date_from)
+      params.push(String(date_from))
       sql += ` AND time_start >= $${paramCount}`
     }
 
     if (date_to) {
+      const d = new Date(String(date_to))
+      if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid date_to format' })
       paramCount++
-      params.push(date_to)
+      params.push(String(date_to))
       sql += ` AND time_end <= $${paramCount}`
     }
 
@@ -100,11 +115,11 @@ router.get('/', authMiddleware, async (req, res) => {
     sql += ' ORDER BY time_start'
 
     paramCount++
-    params.push(Number(limit))
+    params.push(safeLimit)
     sql += ` LIMIT $${paramCount}`
 
     paramCount++
-    params.push(Number(offset))
+    params.push(safeOffset)
     sql += ` OFFSET $${paramCount}`
 
     const result = await query(sql, params)
@@ -123,8 +138,8 @@ router.get('/', authMiddleware, async (req, res) => {
     res.json({
       data: items,
       total,
-      limit: Number(limit),
-      offset: Number(offset)
+      limit: safeLimit,
+      offset: safeOffset
     })
   } catch (error) {
     console.error('Error fetching items:', error)
