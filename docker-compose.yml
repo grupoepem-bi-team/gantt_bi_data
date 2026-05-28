@@ -38,6 +38,11 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://gantt_user:gantt_password@db:5432/gantt_db}
       PORT: 3000
       NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-random-64-chars}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-admin123}
+      JEAN_INITIAL_PASSWORD: ${JEAN_INITIAL_PASSWORD:-}
+      JESUS_INITIAL_PASSWORD: ${JESUS_INITIAL_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy

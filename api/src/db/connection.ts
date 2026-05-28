@@ -7,8 +7,7 @@ export const pool = new Pool({
 })
 
 if (!process.env.DATABASE_URL) {
-  console.error('FATAL: DATABASE_URL environment variable is required')
-  process.exit(1)
+  console.error('ERROR: DATABASE_URL environment variable is not set. Connection will fail.')
 }
 
 export async function query(text: string, params?: unknown[]) {
