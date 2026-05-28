@@ -60,9 +60,11 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-app.listen(PORT, () => {
-  console.log(`Gantt API running on port ${PORT}`)
-  initDB()
-})
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log(`Gantt API running on port ${PORT}`)
+    initDB()
+  })
+}
 
 export default app

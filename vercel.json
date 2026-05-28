@@ -7,42 +7,18 @@
       "config": { "distDir": "dist" }
     },
     {
-      "src": "api/**/*.ts",
+      "src": "api/index.ts",
       "use": "@vercel/node"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/health",
-      "dest": "/api/health.ts"
+      "source": "/api/(.*)",
+      "destination": "/api/index.ts"
     },
     {
-      "src": "/api/users/login",
-      "dest": "/api/users/login.ts"
-    },
-    {
-      "src": "/api/users",
-      "dest": "/api/users.ts"
-    },
-    {
-      "src": "/api/rows/(?<id>[^/]+)",
-      "dest": "/api/rows/[id].ts"
-    },
-    {
-      "src": "/api/rows",
-      "dest": "/api/rows.ts"
-    },
-    {
-      "src": "/api/items/(?<id>[^/]+)",
-      "dest": "/api/items/[id].ts"
-    },
-    {
-      "src": "/api/items",
-      "dest": "/api/items.ts"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "env": {
