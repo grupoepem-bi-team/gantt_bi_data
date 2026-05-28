@@ -279,8 +279,12 @@ async function handleCalendarSave(item: any) {
   showCalendarModal.value = false
 }
 
-function handleViewTask(_item: any) {
-  // placeholder for future view task functionality
+function handleViewTask(item: any) {
+  const found = config.value.items.find(i => i.id === item.id)
+  if (found) {
+    editingItem.value = found
+    modalOpen.value = true
+  }
 }
 </script>
 
