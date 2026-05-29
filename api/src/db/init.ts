@@ -19,18 +19,36 @@ export async function initDB() {
     `)
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        nombre VARCHAR(255) NOT NULL,
+        descripcion TEXT,
+        color VARCHAR(20) DEFAULT '#6366f1',
+        fecha_inicio TIMESTAMP WITH TIME ZONE,
+        fecha_fin TIMESTAMP WITH TIME ZONE,
+        estado VARCHAR(50) DEFAULT 'activo',
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        fecha_actualizacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_projects_created_by ON projects(created_by)`)
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS gantt_rows (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
         label VARCHAR(255) NOT NULL,
         orden INTEGER DEFAULT 0,
         fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gantt_rows_project_id ON gantt_rows(project_id)`)
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS gantt_items (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        label VARCHAR(255) NOT NULL,
+        label VARCHAR(255) NOT NULL CHECK (length(trim(label)) > 0),
         row_id UUID REFERENCES gantt_rows(id) ON DELETE RESTRICT,
         time_start TIMESTAMP WITH TIME ZONE NOT NULL,
         time_end TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -38,12 +56,10 @@ export async function initDB() {
         assigned_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
         created_by UUID REFERENCES users(id) ON DELETE SET NULL,
         fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        fecha_actualizacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        fecha_actualizacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT chk_time_range CHECK (time_end > time_start)
       )
     `)
-
-    await pool.query(`ALTER TABLE gantt_items DROP CONSTRAINT IF EXISTS chk_time_range`)
-    await pool.query(`ALTER TABLE gantt_items ADD CONSTRAINT chk_time_range CHECK (time_end > time_start)`)
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS gantt_dependencies (
@@ -97,6 +113,120 @@ export async function initDB() {
       }
     }, 24 * 60 * 60 * 1000)
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token VARCHAR(255) NOT NULL,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        fecha_expiracion TIMESTAMP WITH TIME ZONE,
+        fecha_ultimo_acceso TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        activo BOOLEAN DEFAULT TRUE
+      )
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)`)
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tags (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        nombre VARCHAR(100) NOT NULL UNIQUE,
+        color VARCHAR(20) DEFAULT '#6366f1',
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS item_tags (
+        item_id UUID REFERENCES gantt_items(id) ON DELETE CASCADE,
+        tag_id UUID REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY (item_id, tag_id)
+      )
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_item_tags_item_id ON item_tags(item_id)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_item_tags_tag_id ON item_tags(tag_id)`)
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS comments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        item_id UUID NOT NULL REFERENCES gantt_items(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        contenido TEXT NOT NULL,
+        fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        fecha_actualizacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_comments_item_id ON comments(item_id)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id)`)
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS attachments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        item_id UUID NOT NULL REFERENCES gantt_items(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        nombre VARCHAR(255) NOT NULL,
+        tipo VARCHAR(100),
+        url TEXT NOT NULL,
+        tamano_bytes BIGINT DEFAULT 0,
+        fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_attachments_item_id ON attachments(item_id)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_attachments_user_id ON attachments(user_id)`)
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        tipo VARCHAR(50) NOT NULL,
+        titulo VARCHAR(255) NOT NULL,
+        mensaje TEXT,
+        leida BOOLEAN DEFAULT FALSE,
+        link VARCHAR(500),
+        fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        fecha_leida TIMESTAMP WITH TIME ZONE
+      )
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_leida ON notifications(leida)`)
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS gantt_items_history (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        item_id UUID NOT NULL REFERENCES gantt_items(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        accion VARCHAR(50) NOT NULL,
+        cambios JSONB,
+        fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gantt_items_history_item_id ON gantt_items_history(item_id)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gantt_items_history_fecha ON gantt_items_history(fecha)`)
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS rate_limits (
+        key VARCHAR(255) PRIMARY KEY,
+        count INTEGER NOT NULL DEFAULT 0,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+      )
+    `)
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_jti VARCHAR(255) NOT NULL UNIQUE,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        revoked BOOLEAN DEFAULT FALSE
+      )
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_refresh_tokens_jti ON refresh_tokens(token_jti)`)
+
     // Create indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_items_row_id ON gantt_items(row_id)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_items_assigned_user ON gantt_items(assigned_user_id)`)
@@ -104,6 +234,11 @@ export async function initDB() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_items_created_by ON gantt_items(created_by)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_activity_logs_usuario ON activity_logs(usuario_id)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_activity_logs_fecha ON activity_logs(fecha)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_items_row_assigned ON gantt_items(row_id, assigned_user_id)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_items_progress ON gantt_items(progress) WHERE progress > 0 AND progress < 100`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_items_date_range ON gantt_items(time_start, time_end)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_comments_item_fecha ON comments(item_id, fecha_creacion DESC)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user_leida ON notifications(user_id, leida) WHERE leida = FALSE`)
 
     // Migrate existing items: set created_by to admin if null
     const adminId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'

@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
 import { query } from '../db/connection.js'
-import { authMiddleware, requireAdmin, generateToken, blacklistAllUserTokens, blacklistToken } from '../middleware/auth.js'
+import { authMiddleware, requireAdmin, generateToken, generateRefreshToken, blacklistAllUserTokens, blacklistToken, isRefreshTokenValid, saveRefreshToken, revokeRefreshToken } from '../middleware/auth.js'
 import { validateUUID, validateEmail } from '../middleware/validators.js'
 
 const router = Router()
@@ -36,19 +37,24 @@ router.post('/login', async (req, res) => {
     await query('UPDATE users SET ultimo_acceso = CURRENT_TIMESTAMP WHERE id = $1', [user.id])
 
     const token = generateToken({ id: user.id, rol: user.rol, nombre: user.nombre, email: user.email })
+    const refreshToken = generateRefreshToken({ id: user.id, rol: user.rol, nombre: user.nombre, email: user.email })
+    const refreshTokenJti = (jwt.decode(refreshToken) as any).jti
+    const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    await saveRefreshToken(user.id, refreshTokenJti, refreshTokenExpiry)
 
     const { password: _, ...userWithoutPassword } = user
-    res.json({ ...userWithoutPassword, token })
+    res.json({ ...userWithoutPassword, token, refreshToken })
   } catch (error) {
     console.error('Error during login:', error)
     res.status(500).json({ error: 'Login failed' })
   }
 })
 
-// Token refresh (authenticated)
+// Token refresh (authenticated) - rotates both access and refresh tokens
 router.post('/refresh', authMiddleware, async (req, res) => {
   try {
     const userId = req.user!.userId
+    const oldJti = req.user!.jti
 
     const result = await query(
       'SELECT id, nombre, email, avatar, color, rol, fecha_creacion, ultimo_acceso, debe_cambiar_password FROM users WHERE id = $1',
@@ -60,11 +66,20 @@ router.post('/refresh', authMiddleware, async (req, res) => {
     }
 
     const user = result.rows[0]
-    const newToken = generateToken({ id: user.id, rol: user.rol, nombre: user.nombre, email: user.email })
+    const newAccessToken = generateToken({ id: user.id, rol: user.rol, nombre: user.nombre, email: user.email })
+    const newRefreshToken = generateRefreshToken({ id: user.id, rol: user.rol, nombre: user.nombre, email: user.email })
+
+    const refreshTokenJti = (jwt.decode(newRefreshToken) as any).jti
+    const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    await saveRefreshToken(userId, refreshTokenJti, refreshTokenExpiry)
+
+    if (oldJti) {
+      await blacklistToken(userId, oldJti)
+    }
 
     await query('UPDATE users SET ultimo_acceso = CURRENT_TIMESTAMP WHERE id = $1', [userId])
 
-    res.json({ user, token: newToken })
+    res.json({ user, token: newAccessToken, refreshToken: newRefreshToken })
   } catch (error) {
     console.error('Error refreshing token:', error)
     res.status(500).json({ error: 'Failed to refresh token' })

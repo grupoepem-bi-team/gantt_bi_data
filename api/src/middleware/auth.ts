@@ -95,8 +95,9 @@ export function generateToken(user: { id: string; rol: string; nombre: string; e
 }
 
 export function generateRefreshToken(user: { id: string; rol: string; nombre: string; email: string }): string {
+  const jti = crypto.randomUUID()
   return jwt.sign(
-    { userId: user.id, rol: user.rol, nombre: user.nombre, email: user.email, type: 'refresh' },
+    { userId: user.id, rol: user.rol, nombre: user.nombre, email: user.email, type: 'refresh', jti },
     JWT_SECRET,
     { expiresIn: '7d' }
   )
@@ -107,6 +108,10 @@ export async function blacklistAllUserTokens(userId: string): Promise<void> {
     await query(
       `INSERT INTO token_blacklist (user_id, token_jti) VALUES ($1, $2)`,
       [userId, `user-deleted-${userId}`]
+    )
+    await query(
+      `UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1`,
+      [userId]
     )
   } catch (error) {
     console.error('Failed to blacklist user tokens:', (error as Error).message)
@@ -123,6 +128,37 @@ export async function blacklistToken(userId: string, jti: string): Promise<void>
   } catch (error) {
     console.error('Failed to blacklist token:', (error as Error).message)
     throw error
+  }
+}
+
+export async function saveRefreshToken(userId: string, jti: string, expiresAt: Date): Promise<void> {
+  try {
+    await query(
+      `INSERT INTO refresh_tokens (user_id, token_jti, expires_at) VALUES ($1, $2, $3)`,
+      [userId, jti, expiresAt]
+    )
+  } catch (error) {
+    console.error('Failed to save refresh token:', (error as Error).message)
+  }
+}
+
+export async function isRefreshTokenValid(jti: string): Promise<boolean> {
+  try {
+    const result = await query(
+      `SELECT id FROM refresh_tokens WHERE token_jti = $1 AND revoked = FALSE AND expires_at > NOW()`,
+      [jti]
+    )
+    return result.rows.length > 0
+  } catch {
+    return false
+  }
+}
+
+export async function revokeRefreshToken(jti: string): Promise<void> {
+  try {
+    await query(`UPDATE refresh_tokens SET revoked = TRUE WHERE token_jti = $1`, [jti])
+  } catch (error) {
+    console.error('Failed to revoke refresh token:', (error as Error).message)
   }
 }
 

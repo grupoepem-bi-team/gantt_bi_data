@@ -4,6 +4,7 @@ import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import { initDB } from './db/init.js'
+import { DbRateLimitStore, cleanup as rateLimitCleanup } from './db/rate-limit-store.js'
 import usersRouter from './routes/users.js'
 import rowsRouter from './routes/rows.js'
 import itemsRouter from './routes/items.js'
@@ -48,7 +49,8 @@ const loginLimiter = rateLimit({
   max: 10,
   message: { error: 'Demasiados intentos de login. Intenta de nuevo en 15 minutos.' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  store: new DbRateLimitStore('login')
 })
 
 const apiLimiter = rateLimit({
@@ -56,7 +58,8 @@ const apiLimiter = rateLimit({
   max: 200,
   message: { error: 'Demasiadas solicitudes. Intenta de nuevo mas tarde.' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  store: new DbRateLimitStore('api')
 })
 
 app.use('/api/users/login', loginLimiter)
@@ -85,6 +88,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
   app.listen(PORT, () => {
     console.log(`Gantt API running on port ${PORT}`)
     initDB()
+    setInterval(() => {
+      rateLimitCleanup().catch(() => {})
+    }, 60 * 60 * 1000)
   })
 }
 
