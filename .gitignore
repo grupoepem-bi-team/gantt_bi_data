@@ -25,3 +25,10 @@ npm-debug.log*
 *.sln
 *.sw?
 .vercel
+
+# Misc
+.playwright-mcp/
+*.png
+!src/assets/*.png
+agente_ui_ux.md
+guia_tratamiento_logos.md
